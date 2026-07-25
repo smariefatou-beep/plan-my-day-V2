@@ -181,9 +181,12 @@
   }
 
   function addAccountBadge(client, email) {
+    var isMobile = window.innerWidth <= 768;
     var el = document.createElement('div');
-    el.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:99998;background:rgba(17,17,17,0.85);color:#fff;font-family:-apple-system,sans-serif;font-size:11px;padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:8px;backdrop-filter:blur(4px);';
-    el.innerHTML = '<span style="opacity:0.85;">' + email + '</span><a href="#" id="co-signout-link" style="color:#F0A9C6;text-decoration:none;font-weight:600;">Déconnexion</a>';
+    // Sits above any fixed bottom tab bar on phones, and below modals (z-index 300 < the app's 500+).
+    el.style.cssText = 'position:fixed;' + (isMobile ? 'bottom:70px;right:10px;font-size:10px;padding:5px 9px;' : 'bottom:14px;right:14px;font-size:11px;padding:7px 12px;') +
+      'z-index:300;background:rgba(17,17,17,0.85);color:#fff;font-family:-apple-system,sans-serif;border-radius:999px;display:flex;align-items:center;gap:8px;backdrop-filter:blur(4px);max-width:80vw;overflow:hidden;';
+    el.innerHTML = '<span style="opacity:0.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + email + '</span><a href="#" id="co-signout-link" style="color:#F0A9C6;text-decoration:none;font-weight:600;flex-shrink:0;">Déconnexion</a>';
     document.body.appendChild(el);
     document.getElementById('co-signout-link').onclick = function (e) { e.preventDefault(); window.__coSignOut(); };
   }

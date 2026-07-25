@@ -152,6 +152,25 @@ function openCreateForCurrentView() {
   if (fn) fn(); else toast('Choisis une section pour créer un élément');
 }
 
+// Mobile-only "Plus" menu — clones whatever's tucked out of the bottom bar (and the sidebar footer)
+// so the list always matches the real nav, nothing to keep in sync by hand.
+function openMobileMoreMenu() {
+  const hiddenItems = document.querySelectorAll('.sidebar-nav .nav-mobile-hidden');
+  const footerItems = document.querySelectorAll('.sidebar-footer .nav-item');
+  const rowStyle = 'padding:13px 10px;flex-direction:row!important;justify-content:flex-start;text-align:left;font-size:14px;gap:14px;border-radius:10px;';
+  let html = '<div class="modal-head"><h2>Plus</h2><button class="btn-ghost btn-icon" onclick="closeGenericModal()">✕</button></div><div style="display:flex;flex-direction:column;gap:2px;">';
+  hiddenItems.forEach(item => {
+    html += `<div class="nav-item" style="${rowStyle}" onclick="closeGenericModal();${item.getAttribute('onclick')}">${item.innerHTML}</div>`;
+  });
+  html += '<div class="nav-divider" style="display:block;"></div>';
+  footerItems.forEach(item => {
+    html += `<div class="nav-item" style="${rowStyle}" onclick="closeGenericModal();${item.getAttribute('onclick')}">${item.innerHTML}</div>`;
+  });
+  html += '</div>';
+  document.getElementById('generic-modal-body').innerHTML = html;
+  openGenericModal();
+}
+
 // ---------------------------------------------------------------------------
 // Generic modal
 // ---------------------------------------------------------------------------

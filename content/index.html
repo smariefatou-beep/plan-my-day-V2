@@ -6,7 +6,7 @@
 <title>Content OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 
@@ -36,14 +36,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         Dashboard
       </div>
-      <div class="nav-item" data-view="rapports" onclick="showView('rapports', this)">
+      <div class="nav-item nav-mobile-hidden" data-view="rapports" onclick="showView('rapports', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Rapports
       </div>
 
       <div class="nav-divider"></div>
 
-      <div class="nav-item" data-view="braindump" onclick="showView('braindump', this)">
+      <div class="nav-item nav-mobile-hidden" data-view="braindump" onclick="showView('braindump', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         Brain Dump
       </div>
@@ -59,31 +59,35 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
         Pipeline
       </div>
-      <div class="nav-item" data-view="videos" onclick="showView('videos', this)">
+      <div class="nav-item nav-mobile-hidden" data-view="videos" onclick="showView('videos', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
         Vidéos
       </div>
 
       <div class="nav-divider"></div>
 
-      <div class="nav-item" data-view="hooks" onclick="showView('hooks', this)">
+      <div class="nav-item nav-mobile-hidden" data-view="hooks" onclick="showView('hooks', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v11a5 5 0 0010 0V8"/><circle cx="7" cy="3" r="1.6"/></svg>
         Hooks
       </div>
-      <div class="nav-item" data-view="createurs" onclick="showView('createurs', this)">
+      <div class="nav-item nav-mobile-hidden" data-view="createurs" onclick="showView('createurs', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
         Créateurs
       </div>
-      <div class="nav-item" data-view="experiences" onclick="showView('experiences', this)">
+      <div class="nav-item nav-mobile-hidden" data-view="experiences" onclick="showView('experiences', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6.3L3.5 18a2 2 0 001.7 3h13.6a2 2 0 001.7-3L15 8.3V2"/><line x1="9" y1="2" x2="15" y2="2"/><line x1="8" y1="14" x2="16" y2="14"/></svg>
         Expériences
+      </div>
+      <div class="nav-item nav-mobile-more-btn" onclick="openMobileMoreMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+        Plus
       </div>
     </nav>
 
     <div class="sidebar-footer">
-      <div class="nav-item" onclick="window.location.href='../index.html'" title="Retour à Plan the Day">
+      <div class="nav-item" onclick="window.location.href='../index.html'" title="Retour à My App">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Plan the Day
+        My App
       </div>
       <div class="nav-item" data-view="parametres" onclick="showView('parametres', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -426,6 +430,6 @@
 <div class="toast-stack" id="toast-stack"></div>
 
 <script src="data.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

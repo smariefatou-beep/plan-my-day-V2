@@ -486,6 +486,8 @@ a { color: inherit; text-decoration: none; }
    Desktop rules above are untouched; this block only kicks in below 768px.
    ========================================================================== */
 
+.nav-mobile-more-btn { display: none; }
+
 @media (max-width: 768px) {
   #app { flex-direction: column; height: 100dvh; }
 
@@ -503,7 +505,9 @@ a { color: inherit; text-decoration: none; }
     gap: 2px; align-items: center; height: 100%;
   }
   .nav-divider { display: none; }
-  .sidebar-footer { flex-shrink: 0; display: flex; flex-direction: row; padding-top: 0; }
+  .sidebar-footer { display: none; }
+  .nav-mobile-hidden { display: none !important; }
+  .nav-mobile-more-btn { display: flex !important; }
   .nav-item {
     flex-direction: column; gap: 2px; padding: 6px 9px; border-radius: 10px;
     font-size: 9.5px; white-space: nowrap; flex-shrink: 0; text-align: center;
@@ -512,8 +516,9 @@ a { color: inherit; text-decoration: none; }
 
   /* Main column */
   .main { width: 100%; }
-  .view-wrap { padding-bottom: 66px; }
+  .view-wrap { padding-bottom: 78px; }
   .view-inner { padding: 18px 16px 24px; max-width: none; }
+  #detail-page-root { padding: 20px 16px 100px !important; }
 
   .topbar { padding: 0 14px; height: 54px; }
   .topbar-title { font-size: 14.5px; }
@@ -559,7 +564,7 @@ a { color: inherit; text-decoration: none; }
   .sheet-layout { grid-template-columns: 1fr; }
   .doc-shell, .doc-shell.doc-wide { max-width: none; }
   .doc-paper { padding: 20px; }
-  .doc-banner-full { margin: -18px -16px 0; height: 160px; }
+  .doc-banner-full { margin: -20px -16px 0; height: 160px; }
   .doc-avatar-overlap img, .doc-avatar-overlap .avatar-dot { width: 64px !important; height: 64px !important; }
   .doc-title { font-size: 21px; }
   .doc-stats-row { gap: 20px; }
