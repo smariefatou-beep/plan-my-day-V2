@@ -50,8 +50,8 @@
       '</div></div>';
   }
 
-  function wireLoginForm(client, mode) {
-    setGateHtml(loginHtml(mode));
+  function wireLoginForm(client, mode, errorMsg, notice) {
+    setGateHtml(loginHtml(mode, errorMsg, notice));
     document.getElementById('sync-toggle').onclick = function (e) {
       e.preventDefault();
       wireLoginForm(client, mode === 'signup' ? 'signin' : 'signup');
@@ -65,7 +65,7 @@
   function submit(client, mode) {
     var email = document.getElementById('sync-email').value.trim();
     var password = document.getElementById('sync-password').value;
-    if (!email || !password) { setGateHtml(loginHtml(mode, 'Email et mot de passe obligatoires.')); wireLoginForm(client, mode); return; }
+    if (!email || !password) { wireLoginForm(client, mode, 'Email et mot de passe obligatoires.'); return; }
     setGateHtml(loadingHtml('Un instant…'));
 
     var action = mode === 'signup'
@@ -73,14 +73,15 @@
       : client.auth.signInWithPassword({ email: email, password: password });
 
     action.then(function (res) {
-      if (res.error) { setGateHtml(loginHtml(mode, res.error.message)); wireLoginForm(client, mode); return; }
+      if (res.error) { wireLoginForm(client, mode, res.error.message); return; }
       if (mode === 'signup' && !res.data.session) {
         // Email confirmation is required on the Supabase project — no session yet.
-        setGateHtml(loginHtml('signin', null, 'Compte créé ! Vérifie ta boîte mail pour confirmer, puis connecte-toi.'));
-        wireLoginForm(client, 'signin');
+        wireLoginForm(client, 'signin', null, 'Compte créé ! Vérifie ta boîte mail pour confirmer, puis connecte-toi.');
         return;
       }
       afterAuth(client, res.data.session);
+    }).catch(function (err) {
+      wireLoginForm(client, mode, (err && err.message) || 'Une erreur inattendue est survenue.');
     });
   }
 
