@@ -479,3 +479,93 @@ a { color: inherit; text-decoration: none; }
 .doc-paper { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 36px 40px; }
 .doc-input { border: none; padding: 2px 0; background: transparent; box-shadow: none; }
 .doc-input:focus { box-shadow: none; }
+
+/* ==========================================================================
+   MOBILE — phone-width layout. Sidebar becomes a bottom tab bar, multi-column
+   grids stack, calendar/pipeline/video sheet reflow to one column.
+   Desktop rules above are untouched; this block only kicks in below 768px.
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  #app { flex-direction: column; height: 100dvh; }
+
+  /* Sidebar -> bottom tab bar */
+  .sidebar {
+    flex-direction: row;
+    position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
+    height: 60px; padding: 6px 4px;
+    border-right: none; border-top: 1px solid var(--border);
+    z-index: 500; align-items: center; overflow-x: auto;
+  }
+  .sidebar-brand, #workspace-select { display: none; }
+  .sidebar-nav {
+    flex-direction: row; flex: 1; overflow-x: auto; overflow-y: hidden;
+    gap: 2px; align-items: center; height: 100%;
+  }
+  .nav-divider { display: none; }
+  .sidebar-footer { flex-shrink: 0; display: flex; flex-direction: row; padding-top: 0; }
+  .nav-item {
+    flex-direction: column; gap: 2px; padding: 6px 9px; border-radius: 10px;
+    font-size: 9.5px; white-space: nowrap; flex-shrink: 0; text-align: center;
+  }
+  .nav-item svg { width: 20px; height: 20px; }
+
+  /* Main column */
+  .main { width: 100%; }
+  .view-wrap { padding-bottom: 66px; }
+  .view-inner { padding: 18px 16px 24px; max-width: none; }
+
+  .topbar { padding: 0 14px; height: 54px; }
+  .topbar-title { font-size: 14.5px; }
+  .topbar-subtitle { display: none; }
+  .search-trigger { width: auto; padding: 8px; border-radius: 50%; }
+  .search-trigger span, .search-trigger kbd { display: none; }
+  .search-trigger svg { margin: 0; }
+  .btn.btn-primary svg + text, .topbar-actions .btn span { display: inline; }
+
+  .welcome-title { font-size: 19px; }
+  .welcome-row { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 20px; }
+  .page-head { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .page-head-actions { width: 100%; }
+  .page-head-actions .btn { flex: 1; }
+
+  /* Grids */
+  .grid-5, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .grid-auto { grid-template-columns: 1fr; }
+  .priority-columns { grid-template-columns: 1fr; }
+  .quick-actions { grid-template-columns: repeat(2, 1fr); }
+
+  .filter-bar { gap: 6px; }
+  .filter-bar .search-trigger { width: 100%; border-radius: var(--radius-sm); padding: 7px 10px 7px 12px; }
+  .filter-bar .search-trigger span, .filter-bar .search-trigger input { display: block; }
+
+  /* Calendar: stack the three areas instead of side-by-side columns */
+  .calendar-shell { grid-template-columns: 1fr; height: auto; }
+  .side-col { max-height: 220px; border-right: none; border-bottom: 1px solid var(--border); }
+  .cal-toolbar { flex-wrap: wrap; gap: 10px; }
+  .cal-toolbar > div:first-child { flex-wrap: wrap; row-gap: 8px; }
+  #cal-range-label { min-width: 0 !important; font-size: 13px; }
+  .cal-week-grid { display: flex; overflow-x: auto; gap: 8px; }
+  .cal-week-grid .cal-day { min-width: 130px; flex-shrink: 0; }
+  .cal-month-grid { gap: 3px; }
+  .cal-day-cell-month { min-height: 56px; padding: 4px; }
+  .cal-month-event { font-size: 9px; }
+
+  /* Pipeline already scrolls horizontally — just tighten it */
+  .pipeline-col { width: 200px; }
+
+  /* Fiche vidéo + doc pages: single column, tighter padding */
+  .sheet-layout { grid-template-columns: 1fr; }
+  .doc-shell, .doc-shell.doc-wide { max-width: none; }
+  .doc-paper { padding: 20px; }
+  .doc-banner-full { margin: -18px -16px 0; height: 160px; }
+  .doc-avatar-overlap img, .doc-avatar-overlap .avatar-dot { width: 64px !important; height: 64px !important; }
+  .doc-title { font-size: 21px; }
+  .doc-stats-row { gap: 20px; }
+
+  /* Modals: use nearly the full screen */
+  .modal { width: 94vw; max-height: 86vh; padding: 20px; }
+  .search-modal { width: 94vw; }
+  .field-row { flex-direction: column; gap: 0; }
+}
