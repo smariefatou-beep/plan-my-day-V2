@@ -2,7 +2,7 @@
 // Loaded before any app code. Blocks behind #sync-gate (already in the HTML, no flash) until
 // the user is authenticated and their data has been hydrated into localStorage, then reveals the app.
 (function () {
-  var SUPABASE_URL = 'https://zvffibgkikllmkpfarh.supabase.co';
+  var SUPABASE_URL = 'https://zvffibgkikkllmkpfarh.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZpYmdraWtrbGxta3BmYXJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwMDc4NjcsImV4cCI6MjEwMDU4Mzg2N30.Uyr9CQT3FBUwFTwh5DfzQLGjg_Pwl4zlCMUwMTFfBUc';
   var HYDRATED_FLAG = '__co_sync_hydrated__';
 
