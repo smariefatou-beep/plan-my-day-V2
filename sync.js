@@ -161,6 +161,9 @@
     }
     hideGate();
     window.__coUserEmail = session.user.email;
+    document.querySelectorAll('.co-account-email').forEach(function (el) {
+      el.textContent = session.user.email;
+    });
     enableWritePatch(client, session.user.id);
   }
 
