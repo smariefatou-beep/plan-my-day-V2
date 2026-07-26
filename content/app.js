@@ -87,6 +87,7 @@ const TITLES = {
   createurs: ['Créateurs', "Comprendre ce qui fonctionne"],
   experiences: ['Expériences', 'Teste, apprends, ajuste'],
   parametres: ['Paramètres', 'Réglages de Content OS'],
+  more: ['Plus', 'Autres sections de Content OS'],
 };
 
 let currentView = 'dashboard';
@@ -94,7 +95,7 @@ const RENDERERS = {
   dashboard: renderDashboard, rapports: renderRapports, braindump: renderBrainDump,
   idees: renderIdees, calendrier: renderCalendrier, pipeline: renderPipeline,
   videos: renderVideos, hooks: renderHooks, createurs: renderCreateurs,
-  experiences: renderExperiences, parametres: renderParametres,
+  experiences: renderExperiences, parametres: renderParametres, more: renderMorePage,
 };
 
 function showView(name, navEl) {
@@ -152,23 +153,40 @@ function openCreateForCurrentView() {
   if (fn) fn(); else toast('Choisis une section pour créer un élément');
 }
 
-// Mobile-only "Plus" menu — clones whatever's tucked out of the bottom bar (and the sidebar footer)
-// so the list always matches the real nav, nothing to keep in sync by hand.
-function openMobileMoreMenu() {
+// Mobile-only "Plus" page — clones whatever's tucked out of the bottom bar (and the sidebar footer)
+// so the list always matches the real nav, nothing to keep in sync by hand. Styled like Plan the Day's More page.
+const MORE_PAGE_SUBTITLES = {
+  'Rapports': 'Historique de tes performances',
+  'Brain Dump': 'Capture rapide de tes idées',
+  'Vidéos': "De l'idée à la publication",
+  'Hooks': 'Ta base de hooks qui performent',
+  'Créateurs': 'Comprendre ce qui fonctionne',
+  'Expériences': 'Teste, apprends, ajuste',
+  'Paramètres': 'Réglages de Content OS',
+  'My App': 'Retour à Plan the Day',
+};
+function moreCardHtml(label, iconSvg, onclickAttr, sub) {
+  return `<div class="more-card" onclick="${onclickAttr}">
+    <div class="more-card-icon">${iconSvg}</div>
+    <div class="more-card-text"><div class="more-card-title">${esc(label)}</div><div class="more-card-sub">${esc(sub || '')}</div></div>
+    <svg class="more-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>`;
+}
+function renderMorePage() {
   const hiddenItems = document.querySelectorAll('.sidebar-nav .nav-mobile-hidden');
   const footerItems = document.querySelectorAll('.sidebar-footer .nav-item');
-  const rowStyle = 'padding:13px 10px;flex-direction:row!important;justify-content:flex-start;text-align:left;font-size:14px;gap:14px;border-radius:10px;';
-  let html = '<div class="modal-head"><h2>Plus</h2><button class="btn-ghost btn-icon" onclick="closeGenericModal()">✕</button></div><div style="display:flex;flex-direction:column;gap:2px;">';
+  let html = '';
   hiddenItems.forEach(item => {
-    html += `<div class="nav-item" style="${rowStyle}" onclick="closeGenericModal();${item.getAttribute('onclick')}">${item.innerHTML}</div>`;
+    const label = item.textContent.trim();
+    html += moreCardHtml(label, item.querySelector('svg').outerHTML, item.getAttribute('onclick'), MORE_PAGE_SUBTITLES[label]);
   });
-  html += '<div class="nav-divider" style="display:block;"></div>';
   footerItems.forEach(item => {
-    html += `<div class="nav-item" style="${rowStyle}" onclick="closeGenericModal();${item.getAttribute('onclick')}">${item.innerHTML}</div>`;
+    const label = item.textContent.trim();
+    html += moreCardHtml(label, item.querySelector('svg').outerHTML, item.getAttribute('onclick'), MORE_PAGE_SUBTITLES[label]);
   });
-  html += '</div>';
-  document.getElementById('generic-modal-body').innerHTML = html;
-  openGenericModal();
+  const signOutIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+  html += moreCardHtml('Déconnexion', signOutIcon, "window.__coSignOut && window.__coSignOut()", window.__coUserEmail || 'Compte cloud');
+  document.getElementById('more-page-root').innerHTML = html;
 }
 
 // ---------------------------------------------------------------------------
@@ -542,13 +560,13 @@ function updateCalToolbarButtons() { document.querySelectorAll('.cal-toolbar-vie
 function setCalView(v) { calState.view = v; renderCalendrier(); }
 function calPrev() {
   if (calState.view === 'week') calState.date = addDays(calState.date, -7);
-  else if (calState.view === 'day') calState.date = addDays(calState.date, -1);
+  else if (calState.view === 'day') calState.date = addDays(calState.date, -7);
   else calState.date = new Date(calState.date.getFullYear(), calState.date.getMonth() - 1, 1);
   renderCalendrier();
 }
 function calNext() {
   if (calState.view === 'week') calState.date = addDays(calState.date, 7);
-  else if (calState.view === 'day') calState.date = addDays(calState.date, 1);
+  else if (calState.view === 'day') calState.date = addDays(calState.date, 7);
   else calState.date = new Date(calState.date.getFullYear(), calState.date.getMonth() + 1, 1);
   renderCalendrier();
 }
@@ -591,14 +609,21 @@ function renderCalWeek() {
   document.getElementById('cal-grid').innerHTML = html;
 }
 function renderCalDay() {
-  const d = calState.date;
-  document.getElementById('cal-range-label').textContent = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const key = isoDateLocal(d);
-  const events = IdeasStore.getAll().filter(i => i.plannedDate === key);
-  document.getElementById('cal-grid').innerHTML = `<div class="card" ondragover="event.preventDefault()" ondrop="onCalendarDayDrop(event,'${key}')" style="min-height:300px;">
-    <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);margin-bottom:14px;text-transform:uppercase;">Prévu ce jour</div>
-    ${events.length ? events.map(e => `<div class="list-row" style="cursor:pointer;" onclick="openIdeaDetail('${e.id}')"><span class="prio-dot ${e.priority}" style="margin-right:10px;"></span><div class="title">${esc(e.title)}</div><span class="pill ${catColor(e.category)}">${esc(e.category || '—')}</span></div>`).join('') : '<div class="empty-col-hint">Aucune idée prévue. Glisse une idée ici depuis la colonne Brain Dump.</div>'}
-  </div>`;
+  const start = calState.date;
+  document.getElementById('cal-range-label').textContent = start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const ideas = IdeasStore.getAll();
+  const todayStr = todayISOLocal();
+  const days = [...Array(14)].map((_, i) => addDays(start, i));
+  const html = days.map(d => {
+    const key = isoDateLocal(d);
+    const isToday = key === todayStr;
+    const events = ideas.filter(i => i.plannedDate === key);
+    return `<div class="cal-day-card ${isToday ? 'today' : ''}" ondragover="event.preventDefault()" ondrop="onCalendarDayDrop(event,'${key}')">
+      <div class="cal-day-card-head">${d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}${isToday ? " · Aujourd'hui" : ''}</div>
+      ${events.length ? events.map(e => `<div class="list-row" style="cursor:pointer;" onclick="openIdeaDetail('${e.id}')"><span class="prio-dot ${e.priority}" style="margin-right:10px;"></span><div class="title">${esc(e.title)}</div><span class="pill ${catColor(e.category)}">${esc(e.category || '—')}</span></div>` ).join('') : '<div class="empty-col-hint">Aucune idée prévue.</div>'}
+    </div>`;
+  }).join('');
+  document.getElementById('cal-grid').innerHTML = `<div class="cal-day-strip">${html}</div>`;
 }
 function renderCalMonth() {
   const d = calState.date;
