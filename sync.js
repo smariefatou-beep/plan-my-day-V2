@@ -85,10 +85,14 @@
     });
   }
 
-  function pullAll(client, userId) {
+  function pullMissingOnly(client, userId) {
+    // Safe merge: only fill in keys that don't exist locally yet. Never overwrite
+    // a key that's already present locally — local data always wins, so a stale
+    // reload/session reset can never silently destroy in-progress edits.
     return client.from('kv_store').select('key,value').eq('user_id', userId).then(function (res) {
       if (res.error) throw res.error;
       (res.data || []).forEach(function (row) {
+        if (localStorage.getItem(row.key) !== null) return;
         try { localStorage.setItem(row.key, JSON.stringify(row.value)); } catch (e) {}
       });
     });
@@ -111,12 +115,11 @@
     var hydrated = sessionStorage.getItem(HYDRATED_FLAG) === '1';
     if (!hydrated) {
       setGateHtml(loadingHtml('Synchronisation de tes données…'));
-      client.from('kv_store').select('key', { count: 'exact', head: true }).eq('user_id', session.user.id)
-        .then(function (res) {
-          if (res.error) throw res.error;
-          var hasCloudData = (res.count || 0) > 0;
-          return hasCloudData ? pullAll(client, session.user.id) : pushAllLocal(client, session.user.id);
-        })
+      // Local data always wins: only gap-fill keys missing locally, then push
+      // whatever is now in local storage back up. A stale session flag (e.g. a
+      // mobile Safari background reload) can never overwrite newer local edits.
+      pullMissingOnly(client, session.user.id)
+        .then(function () { return pushAllLocal(client, session.user.id); })
         .then(function () {
           sessionStorage.setItem(HYDRATED_FLAG, '1');
           location.reload();
@@ -155,7 +158,7 @@
         client.from('kv_store').delete().eq('user_id', userId).eq('key', key).then(function (res) { if (res.error) console.error('sync delete failed', res.error); });
       });
     }
-    function scheduleFlush() { clearTimeout(timer); timer = setTimeout(flush, 1200); }
+    function scheduleFlush() { clearTimeout(timer); timer = setTimeout(flush, 500); }
 
     localStorage.setItem = function (key, val) {
       origSet(key, val);
@@ -169,7 +172,13 @@
       pending[key] = { type: 'remove' };
       scheduleFlush();
     };
+    // Mobile Safari rarely fires beforeunload when a tab is backgrounded/killed,
+    // so flush eagerly on every signal that the page might be about to go away.
     window.addEventListener('beforeunload', flush);
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') flush();
+    });
 
     window.__coSignOut = function () {
       flush();
