@@ -15,12 +15,6 @@
   function getMeta() {
     try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { return {}; }
   }
-  function setMetaTimestamp(key, iso) {
-    var m = getMeta();
-    m[key] = iso || new Date().toISOString();
-    try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {}
-  }
-
   function setSyncStatus(text) {
     document.querySelectorAll('.co-sync-status').forEach(function (el) { el.textContent = text; });
   }
@@ -172,44 +166,66 @@
       el.textContent = session.user.email;
     });
     setSyncStatus('En attente de modifications');
-    enableWritePatch(client, session.user.id);
+    enableLiveSync(client, session.user.id);
   }
 
-  function enableWritePatch(client, userId) {
+  // Continuous two-way sync loop. Deliberately does NOT rely on intercepting
+  // localStorage writes: every few seconds the ENTIRE localStorage is diffed
+  // against the last-pushed snapshot and any change is pushed, no matter how
+  // the app wrote it (setItem, bracket assignment, clear, code that captured
+  // setItem before we patched it, …). Symmetrically, the cloud is re-pulled
+  // periodically and whenever the tab becomes visible again — a long-lived
+  // mobile Safari tab previously NEVER pulled after its first hydration, so
+  // the phone kept showing stale data forever.
+  function enableLiveSync(client, userId) {
     var origSet = localStorage.setItem.bind(localStorage);
     var origRemove = localStorage.removeItem.bind(localStorage);
-    var pending = {};
-    var timer = null;
+    var pushInFlight = false;
 
-    function flush() {
-      var keys = Object.keys(pending);
-      if (!keys.length) return;
+    function takeSnapshot() {
+      var snap = {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!skipKey(k)) snap[k] = localStorage.getItem(k);
+      }
+      return snap;
+    }
+    var lastSnapshot = takeSnapshot();
+
+    function sweepAndPush() {
+      if (pushInFlight) return;
+      var snap = takeSnapshot();
       var now = new Date().toISOString();
-      var toUpsert = keys.map(function (key) {
-        var action = pending[key];
-        var value;
-        if (action.type === 'remove') {
-          // Tombstone instead of deleting the row outright: a deletion is just
-          // another timestamped write, so another device that still has this
-          // key cached locally correctly learns it was removed (and doesn't
-          // resurrect it by pushing its stale copy back up).
-          value = { __co_tombstone__: true };
-        } else {
-          try { value = JSON.parse(action.raw); } catch (e) { value = action.raw; }
-        }
-        return { user_id: userId, key: key, value: value, updated_at: now };
+      var rows = [];
+      var meta = getMeta();
+      Object.keys(snap).forEach(function (k) {
+        if (lastSnapshot[k] === snap[k]) return;
+        var value; try { value = JSON.parse(snap[k]); } catch (e) { value = snap[k]; }
+        rows.push({ user_id: userId, key: k, value: value, updated_at: now });
+        meta[k] = now;
       });
-      pending = {};
+      Object.keys(lastSnapshot).forEach(function (k) {
+        if (k in snap) return;
+        // Tombstone instead of deleting the row outright, so another device
+        // that still has this key learns it was removed instead of pushing
+        // its stale copy back up.
+        rows.push({ user_id: userId, key: k, value: { __co_tombstone__: true }, updated_at: now });
+        meta[k] = now;
+      });
+      if (!rows.length) return;
+      lastSnapshot = snap;
+      try { origSet(META_KEY, JSON.stringify(meta)); } catch (e) {}
       setSyncStatus('Synchronisation…');
-      pushWithRetry(toUpsert, true);
+      pushWithRetry(rows, true);
     }
 
     // A session left open for hours (e.g. the computer sleeps) can have its
-    // access token expire silently — every write then fails forever with no
-    // visible sign until the page is reloaded. On any failure, try refreshing
-    // the session once and retry before surfacing an error.
+    // access token expire silently — every write then failed forever with no
+    // visible sign. On any failure, refresh the session once and retry.
     function pushWithRetry(rows, allowRetry) {
+      pushInFlight = true;
       client.from('kv_store').upsert(rows).then(function (res) {
+        pushInFlight = false;
         if (res.error) {
           if (allowRetry) {
             client.auth.refreshSession().then(function () { pushWithRetry(rows, false); });
@@ -221,6 +237,7 @@
           setSyncStatus('Synchronisé à ' + fmtTime());
         }
       }).catch(function (err) {
+        pushInFlight = false;
         if (allowRetry) {
           client.auth.refreshSession().then(function () { pushWithRetry(rows, false); }).catch(function () {
             setSyncStatus('Erreur réseau (' + fmtTime() + ') : ' + ((err && err.message) || 'inconnue'));
@@ -231,32 +248,47 @@
         }
       });
     }
-    function scheduleFlush() { clearTimeout(timer); timer = setTimeout(flush, 500); }
 
-    localStorage.setItem = function (key, val) {
-      origSet(key, val);
-      if (skipKey(key)) return;
-      setMetaTimestamp(key);
-      pending[key] = { type: 'set', raw: val };
-      scheduleFlush();
-    };
-    localStorage.removeItem = function (key) {
-      origRemove(key);
-      if (skipKey(key)) return;
-      setMetaTimestamp(key);
-      pending[key] = { type: 'remove' };
-      scheduleFlush();
-    };
-    // Mobile Safari rarely fires beforeunload when a tab is backgrounded/killed,
-    // so flush eagerly on every signal that the page might be about to go away.
-    window.addEventListener('beforeunload', flush);
-    window.addEventListener('pagehide', flush);
+    function pullLatest(reloadIfChanged) {
+      var meta = getMeta();
+      client.from('kv_store').select('key,value,updated_at').eq('user_id', userId).then(function (res) {
+        if (res.error) return;
+        var applied = false;
+        (res.data || []).forEach(function (row) {
+          var localTs = meta[row.key] ? new Date(meta[row.key]).getTime() : -Infinity;
+          var cloudTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+          if (cloudTs <= localTs) return;
+          try {
+            if (row.value && row.value.__co_tombstone__) origRemove(row.key);
+            else origSet(row.key, JSON.stringify(row.value));
+            meta[row.key] = row.updated_at;
+            applied = true;
+          } catch (e) {}
+        });
+        if (!applied) return;
+        try { origSet(META_KEY, JSON.stringify(meta)); } catch (e) {}
+        // Refresh the snapshot so the sweep doesn't immediately push the
+        // pulled values back up with new (wrong) timestamps.
+        lastSnapshot = takeSnapshot();
+        setSyncStatus('Synchronisé à ' + fmtTime());
+        // The app's UI reads localStorage only at startup, so reload to show
+        // the fresh data — but only on the return-to-tab transition, never
+        // under the user's feet while they're working.
+        if (reloadIfChanged) location.reload();
+      });
+    }
+
+    setInterval(sweepAndPush, 3000);
+    setInterval(function () { pullLatest(false); }, 20000);
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'hidden') flush();
+      if (document.visibilityState === 'hidden') sweepAndPush();
+      else pullLatest(true);
     });
+    window.addEventListener('beforeunload', sweepAndPush);
+    window.addEventListener('pagehide', sweepAndPush);
 
     window.__coSignOut = function () {
-      flush();
+      sweepAndPush();
       client.auth.signOut().then(function () {
         sessionStorage.removeItem(HYDRATED_FLAG);
         location.reload();
