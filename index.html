@@ -2269,6 +2269,13 @@ function renderDesktopSidebarExtras() {
       <svg fill="none" viewBox="0 0 24 24">${item.icon}</svg>
       <span class="nav-label">${item.label}</span>
     </div>`).join(''));
+  // Sign-out is an action, not a page navigation, so it's kept out of
+  // MORE_NAV_ITEMS and appended separately here.
+  nav.insertAdjacentHTML('beforeend', `
+    <div class="nav-item nav-item-extra" style="color:#EF4444;" onclick="window.__coSignOut && window.__coSignOut()" title="Déconnexion du compte cloud">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="nav-label">Déconnexion</span>
+    </div>`);
 }
 
 function initDefaults() {
