@@ -21,6 +21,13 @@
     try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {}
   }
 
+  function setSyncStatus(text) {
+    document.querySelectorAll('.co-sync-status').forEach(function (el) { el.textContent = text; });
+  }
+  function fmtTime() {
+    return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
@@ -164,6 +171,7 @@
     document.querySelectorAll('.co-account-email').forEach(function (el) {
       el.textContent = session.user.email;
     });
+    setSyncStatus('En attente de modifications');
     enableWritePatch(client, session.user.id);
   }
 
@@ -192,7 +200,36 @@
         return { user_id: userId, key: key, value: value, updated_at: now };
       });
       pending = {};
-      client.from('kv_store').upsert(toUpsert).then(function (res) { if (res.error) console.error('sync push failed', res.error); });
+      setSyncStatus('Synchronisation…');
+      pushWithRetry(toUpsert, true);
+    }
+
+    // A session left open for hours (e.g. the computer sleeps) can have its
+    // access token expire silently — every write then fails forever with no
+    // visible sign until the page is reloaded. On any failure, try refreshing
+    // the session once and retry before surfacing an error.
+    function pushWithRetry(rows, allowRetry) {
+      client.from('kv_store').upsert(rows).then(function (res) {
+        if (res.error) {
+          if (allowRetry) {
+            client.auth.refreshSession().then(function () { pushWithRetry(rows, false); });
+          } else {
+            console.error('sync push failed', res.error);
+            setSyncStatus('Erreur de synchro (' + fmtTime() + ') : ' + res.error.message);
+          }
+        } else {
+          setSyncStatus('Synchronisé à ' + fmtTime());
+        }
+      }).catch(function (err) {
+        if (allowRetry) {
+          client.auth.refreshSession().then(function () { pushWithRetry(rows, false); }).catch(function () {
+            setSyncStatus('Erreur réseau (' + fmtTime() + ') : ' + ((err && err.message) || 'inconnue'));
+          });
+        } else {
+          console.error('sync push failed', err);
+          setSyncStatus('Erreur réseau (' + fmtTime() + ') : ' + ((err && err.message) || 'inconnue'));
+        }
+      });
     }
     function scheduleFlush() { clearTimeout(timer); timer = setTimeout(flush, 500); }
 
