@@ -174,7 +174,7 @@ function moreCardHtml(label, iconSvg, onclickAttr, sub) {
 }
 function renderMorePage() {
   const hiddenItems = document.querySelectorAll('.sidebar-nav .nav-mobile-hidden');
-  const footerItems = document.querySelectorAll('.sidebar-footer .nav-item');
+  const footerItems = document.querySelectorAll('.sidebar-footer .nav-item:not(.sidebar-signout)');
   let html = '';
   hiddenItems.forEach(item => {
     const label = item.textContent.trim();
