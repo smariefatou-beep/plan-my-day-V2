@@ -110,7 +110,11 @@
         var cloudTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
         if (cloudTs > localTs) {
           try {
-            localStorage.setItem(row.key, JSON.stringify(row.value));
+            if (row.value && row.value.__co_tombstone__) {
+              localStorage.removeItem(row.key);
+            } else {
+              localStorage.setItem(row.key, JSON.stringify(row.value));
+            }
             meta[row.key] = row.updated_at || new Date().toISOString();
           } catch (e) {}
         }
@@ -169,20 +173,23 @@
     function flush() {
       var keys = Object.keys(pending);
       if (!keys.length) return;
-      var toUpsert = [], toDelete = [];
-      keys.forEach(function (key) {
+      var now = new Date().toISOString();
+      var toUpsert = keys.map(function (key) {
         var action = pending[key];
-        if (action.type === 'remove') toDelete.push(key);
-        else {
-          var value; try { value = JSON.parse(action.raw); } catch (e) { value = action.raw; }
-          toUpsert.push({ user_id: userId, key: key, value: value, updated_at: new Date().toISOString() });
+        var value;
+        if (action.type === 'remove') {
+          // Tombstone instead of deleting the row outright: a deletion is just
+          // another timestamped write, so another device that still has this
+          // key cached locally correctly learns it was removed (and doesn't
+          // resurrect it by pushing its stale copy back up).
+          value = { __co_tombstone__: true };
+        } else {
+          try { value = JSON.parse(action.raw); } catch (e) { value = action.raw; }
         }
+        return { user_id: userId, key: key, value: value, updated_at: now };
       });
       pending = {};
-      if (toUpsert.length) client.from('kv_store').upsert(toUpsert).then(function (res) { if (res.error) console.error('sync push failed', res.error); });
-      toDelete.forEach(function (key) {
-        client.from('kv_store').delete().eq('user_id', userId).eq('key', key).then(function (res) { if (res.error) console.error('sync delete failed', res.error); });
-      });
+      client.from('kv_store').upsert(toUpsert).then(function (res) { if (res.error) console.error('sync push failed', res.error); });
     }
     function scheduleFlush() { clearTimeout(timer); timer = setTimeout(flush, 500); }
 
