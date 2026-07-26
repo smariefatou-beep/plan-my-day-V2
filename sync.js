@@ -5,11 +5,21 @@
   var SUPABASE_URL = 'https://zvffibgkikkllmkpfarh.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZpYmdraWtrbGxta3BmYXJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwMDc4NjcsImV4cCI6MjEwMDU4Mzg2N30.Uyr9CQT3FBUwFTwh5DfzQLGjg_Pwl4zlCMUwMTFfBUc';
   var HYDRATED_FLAG = '__co_sync_hydrated__';
+  var META_KEY = '__co_sync_meta__';
 
   function gate() { return document.getElementById('sync-gate'); }
   function setGateHtml(html) { var g = gate(); if (g) g.innerHTML = html; }
   function hideGate() { var g = gate(); if (g) g.remove(); }
-  function skipKey(key) { return key.indexOf('sb-') === 0 || key === HYDRATED_FLAG; }
+  function skipKey(key) { return key.indexOf('sb-') === 0 || key === HYDRATED_FLAG || key === META_KEY; }
+
+  function getMeta() {
+    try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function setMetaTimestamp(key, iso) {
+    var m = getMeta();
+    m[key] = iso || new Date().toISOString();
+    try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {}
+  }
 
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -85,40 +95,56 @@
     });
   }
 
-  function pullMissingOnly(client, userId) {
-    // Safe merge: only fill in keys that don't exist locally yet. Never overwrite
-    // a key that's already present locally — local data always wins, so a stale
-    // reload/session reset can never silently destroy in-progress edits.
-    return client.from('kv_store').select('key,value').eq('user_id', userId).then(function (res) {
+  function mergeFromCloud(client, userId) {
+    // Last-write-wins per key: compare each cloud row's timestamp against this
+    // device's own record of when it last touched that key. Only pull if the
+    // cloud value is genuinely newer (or this device has never seen the key at
+    // all) — so a fresh session on device A never clobbers a very recent edit
+    // just because device B happened to sync first, but a real update made on
+    // another device still propagates here.
+    var meta = getMeta();
+    return client.from('kv_store').select('key,value,updated_at').eq('user_id', userId).then(function (res) {
       if (res.error) throw res.error;
       (res.data || []).forEach(function (row) {
-        if (localStorage.getItem(row.key) !== null) return;
-        try { localStorage.setItem(row.key, JSON.stringify(row.value)); } catch (e) {}
+        var localTs = meta[row.key] ? new Date(meta[row.key]).getTime() : -Infinity;
+        var cloudTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+        if (cloudTs > localTs) {
+          try {
+            localStorage.setItem(row.key, JSON.stringify(row.value));
+            meta[row.key] = row.updated_at || new Date().toISOString();
+          } catch (e) {}
+        }
       });
+      try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {}
     });
   }
 
   function pushAllLocal(client, userId) {
     var rows = [];
+    var meta = getMeta();
+    var now = new Date().toISOString();
     for (var i = 0; i < localStorage.length; i++) {
       var key = localStorage.key(i);
       if (skipKey(key)) continue;
       var raw = localStorage.getItem(key), value;
       try { value = JSON.parse(raw); } catch (e) { value = raw; }
-      rows.push({ user_id: userId, key: key, value: value, updated_at: new Date().toISOString() });
+      rows.push({ user_id: userId, key: key, value: value, updated_at: now });
+      meta[key] = now;
     }
     if (!rows.length) return Promise.resolve();
-    return client.from('kv_store').upsert(rows).then(function (res) { if (res.error) throw res.error; });
+    return client.from('kv_store').upsert(rows).then(function (res) {
+      if (res.error) throw res.error;
+      try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {}
+    });
   }
 
   function afterAuth(client, session) {
     var hydrated = sessionStorage.getItem(HYDRATED_FLAG) === '1';
     if (!hydrated) {
       setGateHtml(loadingHtml('Synchronisation de tes données…'));
-      // Local data always wins: only gap-fill keys missing locally, then push
-      // whatever is now in local storage back up. A stale session flag (e.g. a
-      // mobile Safari background reload) can never overwrite newer local edits.
-      pullMissingOnly(client, session.user.id)
+      // Pull whatever's genuinely newer from the cloud, then push the
+      // (now up-to-date) local state back up so both sides converge.
+      mergeFromCloud(client, session.user.id)
         .then(function () { return pushAllLocal(client, session.user.id); })
         .then(function () {
           sessionStorage.setItem(HYDRATED_FLAG, '1');
@@ -163,12 +189,14 @@
     localStorage.setItem = function (key, val) {
       origSet(key, val);
       if (skipKey(key)) return;
+      setMetaTimestamp(key);
       pending[key] = { type: 'set', raw: val };
       scheduleFlush();
     };
     localStorage.removeItem = function (key) {
       origRemove(key);
       if (skipKey(key)) return;
+      setMetaTimestamp(key);
       pending[key] = { type: 'remove' };
       scheduleFlush();
     };
