@@ -495,7 +495,8 @@ a { color: inherit; text-decoration: none; }
 .nav-mobile-more-btn { display: none; }
 
 @media (max-width: 768px) {
-  #app { flex-direction: column; height: 100dvh; }
+  #app { flex-direction: column; height: 100dvh; min-height: 0; }
+  .main { min-height: 0; }
 
   /* Sidebar -> bottom tab bar */
   .sidebar {
@@ -523,7 +524,7 @@ a { color: inherit; text-decoration: none; }
 
   /* Main column */
   .main { width: 100%; }
-  .view-wrap { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .view-wrap { padding-bottom: calc(78px + env(safe-area-inset-bottom)); min-height: 0; }
   .view-inner { padding: 18px 16px 24px; max-width: none; }
   #detail-page-root { padding: 20px 16px calc(100px + env(safe-area-inset-bottom)) !important; }
 
