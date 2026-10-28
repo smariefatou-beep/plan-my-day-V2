@@ -324,15 +324,45 @@
     loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2')
       .then(function () {
         var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        return client.auth.getSession().then(function (res) {
+        // With an expired token and an unreachable service, getSession keeps
+        // retrying the refresh for a very long time: cap the wait.
+        var timeout = new Promise(function (_, reject) {
+          setTimeout(function () { reject(new Error('le service ne répond pas')); }, 10000);
+        });
+        return Promise.race([client.auth.getSession(), timeout]).then(function (res) {
           if (res.error) throw res.error;
           if (!res.data.session) { wireLoginForm(client, 'signin'); return; }
           afterAuth(client, res.data.session);
         });
       })
       .catch(function (err) {
+        var cached = cachedAuthUser();
+        if (cached && hasLocalData()) {
+          // The service itself is unreachable (e.g. the Supabase project is
+          // paused) but this device was already signed in and holds data:
+          // open it offline instead of locking the user out. Edits stay local
+          // and are merged on the next successful hydration (the hydrated
+          // flag is deliberately left unset).
+          revealApp({ user: cached });
+          setSyncStatus('Hors ligne : service injoignable (' + ((err && err.message) || 'inconnue') + '). Tes modifs restent sur cet appareil.');
+          return;
+        }
         setGateHtml(errorHtml('La connexion au service a échoué.<br><br><span style="color:#999;">' + (err && err.message ? err.message : '') + '</span>'));
       });
+  }
+
+  // The supabase-js session saved on this device (sb-<ref>-auth-token), if any.
+  function cachedAuthUser() {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k.indexOf('sb-') !== 0 || k.indexOf('-auth-token') === -1) continue;
+      try {
+        var v = JSON.parse(localStorage.getItem(k));
+        var user = v && (v.user || (v.currentSession && v.currentSession.user));
+        if (user && user.email) return user;
+      } catch (e) {}
+    }
+    return null;
   }
 
   main();
