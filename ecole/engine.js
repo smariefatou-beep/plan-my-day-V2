@@ -552,23 +552,24 @@
   }
 
   // ---------------------------------------------------------------- Tirelire
-  // Chaque minute de travail cochée rapporte des dollars. Calculé à partir de ta progression
+  // Chaque tâche cochée rapporte quelques dollars selon sa taille. Calculé à partir de ta progression
   // (pas stocké à part) : décocher une case retire ce qu'elle avait rapporté.
-  var RATE = 40;            // $ par minute de travail
-  var WEEK_BONUS = 2000;    // semaine d'une matière entièrement faite
+  var PAY = [[20, 5], [40, 7], [Infinity, 10]]; // jusqu'à 20 min : 5 $ · jusqu'à 40 min : 7 $ · au-delà : 10 $
+  var WEEK_BONUS = 20;      // semaine d'une matière entièrement faite
+  function rewardMins(m) { for (var i = 0; i < PAY.length; i++) if ((m || 0) <= PAY[i][0]) return PAY[i][1]; return 0; }
   // [seuil, nom, récompense à t'offrir en vrai, budget en euros]
   var LEVELS = [
     [0, 'Tirelire vide', '', 0],
-    [2000, 'Argent de poche', 'Un petit dessert ou ta boisson préférée', 5],
-    [10000, 'Premier salaire', 'Un goûter spécial : viennoiserie, bubble tea ou glace', 8],
-    [30000, 'Épargnante', 'Un joli carnet, des stylos ou une bougie', 15],
-    [70000, 'Investisseuse', 'Un livre ou un magazine que tu as envie de lire', 20],
-    [130000, 'Propriétaire', 'Un brunch ou une séance de cinéma', 25],
-    [220000, 'Entrepreneuse', 'Un accessoire ou un petit vêtement', 35],
-    [350000, 'Rentière', 'Un moment soin : manucure, masque, coiffeur', 45],
-    [550000, 'Presque millionnaire', 'Une sortie de ton choix avec une amie', 60],
-    [800000, 'Millionnaire', 'Le truc que tu veux depuis longtemps', 100],
-    [1200000, 'Magnat de la finance', 'Ta grande récompense de fin de semestre', 150]
+    [30, 'Argent de poche', 'Un petit dessert ou ta boisson préférée', 5],
+    [120, 'Premier salaire', 'Un goûter spécial : viennoiserie, bubble tea ou glace', 8],
+    [300, 'Épargnante', 'Un joli carnet, des stylos ou une bougie', 15],
+    [600, 'Investisseuse', 'Un livre ou un magazine que tu as envie de lire', 20],
+    [1000, 'Propriétaire', 'Un brunch ou une séance de cinéma', 25],
+    [1500, 'Entrepreneuse', 'Un accessoire ou un petit vêtement', 35],
+    [2200, 'Rentière', 'Un moment soin : manucure, masque, coiffeur', 45],
+    [3000, 'Presque millionnaire', 'Une sortie de ton choix avec une amie', 60],
+    [4200, 'Millionnaire', 'Le truc que tu veux depuis longtemps', 100],
+    [6000, 'Magnat de la finance', 'Ta grande récompense de fin de semestre', 150]
   ];
   // Récompense d'un niveau, avec tes modifications éventuelles (state.rewards.custom).
   function levelReward(state, i) {
@@ -586,8 +587,8 @@
     var acts = activities(cur, state, settings);
     var work = 0, routines = 0, extras = 0, bonus = 0, weeks = {};
     acts.forEach(function (a) {
-      var done = a.mins - remainingMins(a, state);
-      work += done * RATE;
+      var part = a.mins ? (a.mins - remainingMins(a, state)) / a.mins : 0;
+      work += Math.round(part * reward(a));
       if (a.week == null || a.optional || a.viaRoutine || a.removed) return;
       var k = a.subject + '-' + a.week;
       if (!weeks[k]) weeks[k] = { all: true, any: false };
@@ -596,19 +597,19 @@
     Object.keys(weeks).forEach(function (k) { if (weeks[k].all && weeks[k].any) bonus += WEEK_BONUS; });
     var rmins = {}; cur.routines.forEach(function (r) { rmins[r.id] = r.mins; });
     Object.keys(state.routineLog || {}).forEach(function (d) {
-      Object.keys(state.routineLog[d]).forEach(function (rid) { routines += (rmins[rid] || 0) * RATE; });
+      Object.keys(state.routineLog[d]).forEach(function (rid) { if (rmins[rid] != null) routines += rewardMins(rmins[rid]); });
     });
-    (state.extras || []).forEach(function (x) { if (x.done) extras += (x.mins || 0) * RATE; });
+    (state.extras || []).forEach(function (x) { if (x.done) extras += rewardMins(x.mins); });
     var total = work + routines + extras + bonus, lvl = 0;
     for (var i = 0; i < LEVELS.length; i++) if (total >= LEVELS[i][0]) lvl = i;
     var next = LEVELS[lvl + 1] || null;
     return {
-      total: total, work: work, routines: routines, extras: extras, bonus: bonus, rate: RATE, weekBonus: WEEK_BONUS,
+      total: total, work: work, routines: routines, extras: extras, bonus: bonus, weekBonus: WEEK_BONUS,
       level: lvl, levelName: LEVELS[lvl][1], next: next ? { at: next[0], name: next[1] } : null,
       toNext: next ? Math.round(100 * (total - LEVELS[lvl][0]) / (next[0] - LEVELS[lvl][0])) : 100, levels: LEVELS
     };
   }
-  function reward(a) { return (a.mins || 0) * RATE; }
+  function reward(a) { return rewardMins(a.mins); }
 
   // ---------------------------------------------------------------- Mutations (pures : renvoient un nouvel état)
   function setStatus(state, id, s, p) {
@@ -626,6 +627,6 @@
     activities: activities, statusOf: statusOf, remainingMins: remainingMins, classify: classify,
     routinesFor: routinesFor, nextInSequence: nextInSequence,
     buildPlan: buildPlan, detectMissed: detectMissed, progress: progress, setStatus: setStatus, TIER_LABEL: TIER_LABEL,
-    wallet: wallet, reward: reward, levelReward: levelReward, newRewards: newRewards, examDate: examDate
+    wallet: wallet, reward: reward, rewardMins: rewardMins, levelReward: levelReward, newRewards: newRewards, examDate: examDate
   };
 })(typeof window !== 'undefined' ? window : globalThis);

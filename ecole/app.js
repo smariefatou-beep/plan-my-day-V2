@@ -107,7 +107,7 @@
       '<div class="t-ico">' + ART.icon('mine', s.color, 22) + '</div>' +
       '<div class="t-main">' + (x.subject ? '<span class="t-subj">' + esc(s.short) + '</span>' : '') + '<div class="t-title">' + esc(x.title) + '</div><div class="t-meta">' +
       '<span class="pill">' + hm(x.mins) + '</span><span class="pill k-mine">Mon ajout</span></div></div>' +
-      '<span class="reward">+' + money(x.mins * 40) + '</span><button class="more" data-a="extra-del" data-id="' + esc(x.id) + '" aria-label="Supprimer">×</button></div>';
+      '<span class="reward">+' + money(E.rewardMins(x.mins)) + '</span><button class="more" data-a="extra-del" data-id="' + esc(x.id) + '" aria-label="Supprimer">×</button></div>';
   }
 
   // ---------------------------------------------------------------- Aujourd'hui
@@ -403,10 +403,10 @@
     var w = E.wallet(C, state, settings);
     var pr = E.progress(C, state, settings, today);
     var subs = C.subjects.filter(function (s) { return !s.noSyllabus; });
-    var h = '<h2 class="title">Ma tirelire</h2><div class="subtitle">Chaque étape cochée te rapporte des dollars. Objectif : devenir millionnaire d’ici la fin du semestre.</div>';
+    var h = '<h2 class="title">Ma tirelire</h2><div class="subtitle">Chaque étape cochée te rapporte quelques dollars : 5 $ pour une petite tâche, jusqu’à 10 $ pour une grosse. Objectif : « Magnat de la finance » (6 000 $) d’ici la fin du semestre.</div>';
     h += '<div class="card bank">' + ART.piggyBank(160) + '<div><div class="amount">' + money(w.total) + '</div><div class="lvl">Niveau ' + (w.level + 1) + ' · ' + esc(w.levelName) + '</div>' +
       (w.next ? '<div class="coins-bar"><i style="width:' + w.toNext + '%"></i></div><div style="font-size:12.5px;color:var(--ink-2);">Encore <b>' + money(w.next.at - w.total) + '</b> pour devenir « ' + esc(w.next.name) + ' »</div>' : '<div style="margin-top:8px;">Tu as tout débloqué ✿</div>') +
-      '<div class="earn" style="margin-top:12px;"><div><span>Étapes de cours (' + w.rate + ' $ la minute)</span><b>' + money(w.work) + '</b></div>' +
+      '<div class="earn" style="margin-top:12px;"><div><span>Étapes de cours (5 $ jusqu’à 20 min, 7 $ jusqu’à 40 min, 10 $ au-delà)</span><b>' + money(w.work) + '</b></div>' +
       '<div><span>Routines du jardin</span><b>' + money(w.routines) + '</b></div><div><span>Tes ajouts</span><b>' + money(w.extras) + '</b></div>' +
       '<div><span>Bonus semaine complète (' + money(w.weekBonus) + ' chacune)</span><b>' + money(w.bonus) + '</b></div></div></div></div>';
     var taken = ((state.rewards || {}).taken) || {};
@@ -437,7 +437,7 @@
       h += '<div class="bars">' + ws.map(function (x) { var q = r.weeks[x.n] || { totalMins: 0, doneMins: 0 }; var p = q.totalMins ? Math.round(100 * q.doneMins / q.totalMins) : 0; return '<div title="S' + x.n + ' : ' + p + ' %"><i style="height:' + p + '%"></i></div>'; }).join('') + '</div>' +
         '<div class="bars-lbl">' + ws.map(function (x) { return '<span>' + x.n + '</span>'; }).join('') + '</div>';
       h += '<div class="kv"><div><b>' + ((state.assessed || {})[s.id] ? (r.behind ? hm(r.behindMins) : '0') : '—') + '</b>à rattraper</div>' +
-        '<div><b>' + money(r.doneMins * w.rate) + '</b>gagnés ici</div>' +
+        '<div><b>' + money(E.activities(C, state, settings).filter(function (a) { return a.subject === s.id && stOf(a.id).s === 'done'; }).reduce(function (t, a) { return t + E.reward(a); }, 0)) + '</b>gagnés ici</div>' +
         '<div><b>' + (r.mastery != null ? MASTERY[Math.round(r.mastery)] : '—') + '</b>maîtrise ressentie</div>' +
         '<div><b>' + (r.upcoming[0] ? E.niceDay(r.upcoming[0].due, today) : '—') + '</b>' + (r.upcoming[0] ? esc(r.upcoming[0].title.slice(0, 32)) : 'pas d’échéance sous 14 j') + '</div></div></div>';
     });

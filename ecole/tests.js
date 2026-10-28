@@ -185,7 +185,7 @@
 
   // 18. Tirelire
   var w0 = E.wallet(CUR, empty, settings), w1s = E.wallet(CUR, st, settings);
-  var expect = 0; st && Object.keys(st.acts).forEach(function (id) { expect += byId[id].mins * w1s.rate; });
+  var expect = 0; st && Object.keys(st.acts).forEach(function (id) { expect += E.reward(byId[id]); });
   ok(w0.total === 0 && w1s.total === expect + w1s.weekBonus && w1s.bonus === w1s.weekBonus,
     '18. Tirelire : 0 $ au départ, puis ' + w1s.total.toLocaleString('fr-FR') + ' $ après la semaine 1 de Micro (dont le bonus de semaine complète)', JSON.stringify({ total: w1s.total, expect: expect, bonus: w1s.bonus }));
 
