@@ -20,7 +20,22 @@
   function today() { return E.dayStr(new Date()); }
   function getState() { var s = read(KEYS.state, null); var d = E.emptyState(); if (s) for (var k in s) d[k] = s[k]; return d; }
   function saveState(s) { write(KEYS.state, s); }
-  function getSettings() { return E.withDefaults(CUR, read(KEYS.settings, null)); }
+  function getSettings() {
+    var raw = read(KEYS.settings, null);
+    // Ancien emploi du temps de départ (jours sans horaires) → ton vrai emploi du temps ESCP.
+    // Ce que tu avais ajouté toi-même est gardé, sauf s'il fait doublon.
+    if (raw && raw.timetable && (raw.ttVersion || 1) < (CUR.timetableVersion || 1)) {
+      var tt = JSON.parse(JSON.stringify(CUR.timetable)), old = CUR.timetableV1Ids || [];
+      raw.timetable.forEach(function (t) {
+        if (old.indexOf(t.id) !== -1) return;
+        if (tt.some(function (u) { return u.subject === t.subject && u.kind === t.kind && u.day === t.day; })) return;
+        tt.push(t);
+      });
+      raw.timetable = tt; raw.ttVersion = CUR.timetableVersion;
+      write(KEYS.settings, raw);
+    }
+    return E.withDefaults(CUR, raw);
+  }
   function saveSettings(s) { write(KEYS.settings, s); }
   function getHistory() { return read(KEYS.history, []); }
   function log(ev) {

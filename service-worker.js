@@ -1,7 +1,7 @@
 // Bump this version string whenever index.html changes meaningfully — it's
 // what forces installed devices to fetch the new version instead of
 // serving a stale cached copy forever.
-const CACHE_NAME = 'plan-the-day-v4';
+const CACHE_NAME = 'plan-the-day-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

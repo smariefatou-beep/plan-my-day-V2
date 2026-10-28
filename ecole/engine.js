@@ -30,12 +30,13 @@
   function defaultSettings(cur) {
     return {
       v: 1,
-      capacity: { 0: 270, 1: 240, 2: 210, 3: 210, 4: 300, 5: 300, 6: 270 },
+      capacity: { 0: 330, 1: 300, 2: 270, 3: 270, 4: 360, 5: 360, 6: 360 },
       catchupShare: 0.6,      // part max de la capacité restante donnée au rattrapage quand il y a des cours à préparer
       catchupPerSubject: 120, // minutes max de rattrapage d'une même matière par jour
       horizon: 14,
       timetable: JSON.parse(JSON.stringify(cur.timetable)),
-      exams: {},              // assessmentId -> 'YYYY-MM-DD'
+      ttVersion: cur.timetableVersion || 1,
+      exams: {},              // assessmentId -> 'YYYY-MM-DD' (remplace la date du calendrier d'examens)
       routinesOff: {},        // routineId -> true
       prepDays: {}            // subjectId -> [weekday, …] (remplace les préférences par défaut)
     };
@@ -46,7 +47,13 @@
     return d;
   }
   function emptyState() {
-    return { v: 1, acts: {}, mastery: {}, assessed: {}, custom: [], overrides: {}, routineLog: {} };
+    return { v: 1, acts: {}, mastery: {}, assessed: {}, custom: [], overrides: {}, routineLog: {}, pins: {}, extras: [], removed: {}, rewards: { seen: 0, taken: {}, custom: {} } };
+  }
+
+  // Date d'une évaluation : celle que tu as saisie, sinon celle du calendrier officiel (curriculum).
+  function examDate(settings, ex) {
+    if (ex.past) return null;
+    return ((settings && settings.exams) || {})[ex.id] || ex.date || null;
   }
 
   // ---------------------------------------------------------------- Calendrier académique
@@ -87,6 +94,10 @@
       a.weekTitle = wk.title;
       a.seq = seq++;
       if (o.mins != null) a.mins = o.mins;
+      // Retirée par toi (« je ne la fais pas ») : gardée dans la liste, jamais planifiée.
+      if ((state.removed || {})[a.id]) a.removed = true;
+      // Matière dont l'examen final est passé : ce qui reste devient facultatif.
+      if (subj.finished && !a.optional) { a.optional = true; a.finished = true; }
       a.target = ws ? addDays(ws, wk.n === 0 ? 7 : (subj.prepOffset || 0)) : null;
       if (a.dueOffset != null && ws) a.due = addDays(ws, a.dueOffset);
       if (o.due !== undefined) { a.due = o.due || null; a.dueSrc = o.due ? 'Date saisie par toi' : a.dueSrc; }
@@ -94,17 +105,19 @@
       // Mise à disposition : les manuels sont toujours disponibles ; vidéos, tests et devoirs
       // sont supposés publiés le lundi de leur semaine (la semaine d'avant pour un cours du lundi,
       // préparé le jeudi/dimanche précédent). Marque « bloqué » ce qui n'est pas encore en ligne.
-      var online = a.type === 'video' || a.type === 'quiz' || a.type === 'assignment' || a.seminar;
+      var online = a.type === 'video' || a.type === 'test' || a.inClass;
       a.release = o.release !== undefined ? o.release :
         (online && ws && wk.n > 0 ? addDays(ws, subj.prepOffset === 0 ? -7 : 0) : null);
-      a.seminarDate = null;
-      if (a.seminar && ws && wk.n > 0) {
+      // Séance en classe (follow-up, séminaire, atelier) : son jour vient de ton emploi du temps.
+      a.classDate = null;
+      if (a.inClass && ws && wk.n > 0) {
         (settings.timetable || []).forEach(function (t) {
-          if (t.subject === subj.id && t.kind === 'seminar' && t.day != null) {
+          if (t.subject === subj.id && t.kind === a.session && t.day != null) {
             var d = addDays(ws, (t.day + 6) % 7);
-            if (!a.seminarDate || d < a.seminarDate) a.seminarDate = d;
+            if (!a.classDate || d < a.classDate) a.classDate = d;
           }
         });
+        if (a.classDate) { a.target = a.classDate; if (a.release > a.classDate) a.release = a.classDate; }
       }
       out.push(a);
     }
@@ -125,7 +138,7 @@
     });
     // Révisions d'examen : générées seulement quand tu as saisi la date de l'évaluation.
     cur.assessments.forEach(function (ex) {
-      var date = (settings.exams || {})[ex.id];
+      var date = examDate(settings, ex);
       if (!date) return;
       var n = /final/.test(ex.id) ? 4 : (/mid|essay/.test(ex.id) ? 3 : 0);
       for (var k = 1; k <= n; k++) {
@@ -135,6 +148,7 @@
           target: addDays(date, -1), due: addDays(date, -1), dueSrc: 'Avant l’examen du ' + date,
           release: addDays(date, -10), exam: ex.id, prereq: k > 1 ? ['rev-' + ex.id + '-' + (k - 1)] : []
         });
+        if ((state.removed || {})[out[out.length - 1].id]) out[out.length - 1].removed = true;
       }
     });
     return out;
@@ -159,7 +173,9 @@
   function classify(a, state, today) {
     var s = statusOf(state, a.id);
     if (s === 'done') return 'done';
-    if (a.type === 'class') return a.target && a.target < today ? 'past-class' : 'class';
+    if (a.removed) return 'removed';
+    // Exercices faits en classe : pas du temps d'étude à planifier, sauf s'ils sont passés (rattrapage).
+    if (a.inClass && s !== 'blocked' && (!a.target || a.target >= today)) return 'inclass';
     if (s === 'blocked' || (a.blocked && s !== 'doing')) return 'blocked';
     if (a.viaRoutine) return 'routine';
     if (a.optional) return 'optional';
@@ -182,9 +198,11 @@
   }
 
   // Prochaine activité d'une matière dans l'ordre du syllabus (sert à la routine de maths adaptative).
-  function nextInSequence(cur, state, settings, subjectId, today) {
+  // `types` (facultatif) limite aux types utiles pour la routine, ex. ['practice', 'reading'].
+  function nextInSequence(cur, state, settings, subjectId, today, types) {
     var list = activities(cur, state, settings).filter(function (a) {
-      return a.subject === subjectId && a.type !== 'class' && !a.optional && statusOf(state, a.id) !== 'done' &&
+      return a.subject === subjectId && !a.inClass && !a.optional && !a.removed && statusOf(state, a.id) !== 'done' &&
+        (!types || types.indexOf(a.type) !== -1) &&
         (!a.release || a.release <= today) && a.week != null;
     });
     list.sort(function (x, y) { return x.seq - y.seq; });
@@ -234,7 +252,7 @@
         var p = byId[ps[i]];
         if (!p) continue;
         var c = cls[p.id];
-        if (c === 'done' || c === 'class' || c === 'past-class' || c === 'optional' || c === 'routine' || c === 'missed') continue;
+        if (c === 'done' || c === 'inclass' || c === 'optional' || c === 'routine' || c === 'missed' || c === 'removed') continue;
         if (c === 'blocked') return false;
         if (!placedOn[p.id] || placedOn[p.id] > date) return false;
       }
@@ -259,7 +277,7 @@
       opts = opts || {};
       var mins = remainingMins(a, state);
       var cost = opts.free ? 0 : mins;
-      day.items.push({ id: a.id, mins: mins, kind: kind, tier: tier, reason: reason, inClass: !!opts.free });
+      day.items.push({ id: a.id, mins: mins, kind: kind, tier: tier, reason: reason, inClass: !!opts.free, pinned: !!opts.pinned });
       day.load += cost;
       if (kind === 'catchup') {
         day.catchLoad += cost;
@@ -285,8 +303,8 @@
     function prefsFor(a) {
       var s = subjOf(a);
       var custom = (settings.prepDays || {})[a.subject];
-      if (a.type === 'quiz' && a.subject === 'EC11') return [6, 5];
-      if (a.type === 'assignment' && a.subject === 'MA11') return [6, 0];
+      if (a.type === 'test' && a.subject === 'EC11') return [6, 5];
+      if (a.type === 'test' && a.subject === 'MA11') return [6, 0];
       if (a.subject === 'LE11' && a.type === 'video') return [6];
       return custom || s.prepDays || [];
     }
@@ -295,7 +313,7 @@
     // Place une activité et, avant elle, ses prérequis encore à faire.
     function placeWithPrereqs(a, from, to, kind, tier, reasonFn, depth) {
       if (placedOn[a.id] || !isCandidate(a)) return !!placedOn[a.id];
-      if ((depth || 0) > 6) return false;
+      if ((depth || 0) > 15) return false;
       (a.prereq || []).forEach(function (pid) {
         var p = byId[pid];
         if (p && isCandidate(p) && !placedOn[p.id]) {
@@ -310,38 +328,51 @@
       return true;
     }
 
-    // 0) Garder stable ce qui était déjà prévu aujourd'hui (le plan ne se réorganise pas sous tes yeux).
+    // 0a) Tes ajouts personnels : ils prennent leur place dans la journée choisie.
+    days.forEach(function (d) {
+      d.extras = (state.extras || []).filter(function (x) { return x.date === d.date; });
+      d.extras.forEach(function (x) { if (!x.done) d.load += x.mins || 0; });
+    });
+
+    // 0b) Ce que tu as placé toi-même sur un jour (« ce mercredi je veux faire ça ») : respecté tel quel.
+    Object.keys(state.pins || {}).forEach(function (id) {
+      var date = state.pins[id], a = byId[id], i = dayIdx[date];
+      if (!a || i == null || placedOn[id] || !isCandidate(a)) return;
+      var c = cls[id];
+      put(a, days[i], c === 'behind' ? 'catchup' : 'current', 2, 'Tu as choisi de le faire ce jour-là', { pinned: true });
+    });
+
+    // 0c) Garder stable ce qui était déjà prévu aujourd'hui (le plan ne se réorganise pas sous tes yeux).
     if (prevPlan && prevPlan.today === today && prevPlan.days && prevPlan.days[today]) {
       prevPlan.days[today].forEach(function (it) {
         var a = byId[it.id];
-        if (a && isCandidate(a) && !placedOn[a.id] && released(a, today)) put(a, days[0], it.kind, it.tier, it.reason, { free: it.inClass });
+        if (a && !it.inClass && isCandidate(a) && !placedOn[a.id] && released(a, today)) put(a, days[0], it.kind, it.tier, it.reason);
       });
     }
 
-    // 1) Séminaires : les exercices de la matière, pendant le séminaire (temps de cours, pas d'étude).
+    // 1) Séances en classe (follow-up, séminaire, atelier) : les exercices se font sur place,
+    //    le jour indiqué dans ton emploi du temps (temps de cours, pas d'étude en plus).
+    var SESSION = { followup: 'follow-up session', seminar: 'séminaire', workshop: 'atelier' };
     days.forEach(function (day) {
       (settings.timetable || []).forEach(function (t) {
-        if (t.kind !== 'seminar' || t.day !== day.weekday || day.inBreak || day.academicWeek == null) return;
+        if (!SESSION[t.kind] || t.day !== day.weekday || day.inBreak || day.academicWeek == null) return;
         var subj = subjectById(cur, t.subject);
         if (!subj) return;
-        var sem = acts.filter(function (a) { return a.subject === t.subject && a.seminar && a.week === day.academicWeek; })[0];
-        var info = { subject: t.subject, start: t.start, end: t.end, week: day.academicWeek, activity: sem ? sem.id : null, note: null };
-        if (!sem) info.note = 'Pas d’exercice de séminaire précis dans le syllabus pour cette semaine.';
-        else if (cls[sem.id] === 'done') info.note = 'Exercices déjà faits ✔';
-        else if (isCandidate(sem) && !placedOn[sem.id]) {
+        var sem = acts.filter(function (a) { return a.subject === t.subject && a.inClass && a.session === t.kind && a.week === day.academicWeek; })[0];
+        var info = { subject: t.subject, kind: t.kind, start: t.start, end: t.end, week: day.academicWeek, activity: sem ? sem.id : null, note: null };
+        if (!sem) info.note = 'Pas d’exercices prévus par le syllabus pour cette semaine.';
+        else if (cls[sem.id] === 'done') info.note = 'Exercices déjà faits ✓';
+        else if (cls[sem.id] === 'inclass' && !placedOn[sem.id]) {
           (sem.prereq || []).forEach(function (pid) {
             var p = byId[pid];
             if (p && isCandidate(p) && !placedOn[p.id]) {
               placeWithPrereqs(p, today, day.date, 'current', 2, function () {
-                return 'À voir avant ton séminaire de ' + subj.short + ' (' + niceDay(day.date, today) + ')';
+                return 'À voir avant ta ' + SESSION[t.kind] + ' de ' + subj.short + ' (' + niceDay(day.date, today) + ')';
               });
             }
           });
-          if (prereqReadyBy(sem, day.date)) {
-            put(sem, day, 'seminar', 2, 'Pendant ton séminaire de ' + subj.short + ' — exercices de la semaine ' + day.academicWeek, { free: true });
-          } else {
-            info.note = 'Étudie d’abord le cours de la semaine ' + day.academicWeek + ' : les exercices en dépendent.';
-          }
+          put(sem, day, 'seminar', 2, 'Pendant ta ' + SESSION[t.kind] + ' de ' + subj.short + ' — semaine ' + day.academicWeek, { free: true });
+          if (!prereqReadyBy(sem, day.date)) info.note = 'Regarde d’abord le cours de la semaine ' + day.academicWeek + ' : les exercices en dépendent.';
         }
         day.seminars.push(info);
       });
@@ -372,7 +403,7 @@
       });
 
     // 3) Préparation des cours en cours et à venir — jamais repoussée par le rattrapage.
-    acts.filter(function (a) { return (cls[a.id] === 'current' || cls[a.id] === 'upcoming') && isCandidate(a) && !placedOn[a.id] && !a.seminar; })
+    acts.filter(function (a) { return (cls[a.id] === 'current' || cls[a.id] === 'upcoming') && isCandidate(a) && !placedOn[a.id]; })
       .sort(function (x, y) { return x.target < y.target ? -1 : x.target > y.target ? 1 : x.seq - y.seq; })
       .forEach(function (a) {
         var s = subjOf(a);
@@ -389,13 +420,6 @@
             return 'Prépa ' + labelOf(a) + ' semaine ' + a.week + ' — pas de place avant l’objectif, au plus tôt après';
           });
         }
-      });
-    // Séminaires non couverts par l'emploi du temps : à faire comme une prépa normale.
-    acts.filter(function (a) { return a.seminar && (cls[a.id] === 'current' || cls[a.id] === 'upcoming') && isCandidate(a) && !placedOn[a.id] && !a.seminarDate; })
-      .forEach(function (a) {
-        placeWithPrereqs(a, today, a.target < horizonEnd ? (a.target < today ? today : a.target) : horizonEnd, 'current', 2, function () {
-          return 'Exercices de séminaire ' + labelOf(a) + ' semaine ' + a.week + ' (ajoute l’horaire du séminaire dans Réglages pour les placer pendant le séminaire)';
-        });
       });
 
     // 4) Rattrapage, réparti sur plusieurs jours et entre les matières.
@@ -463,7 +487,7 @@
     var blocked = acts.filter(function (a) { return cls[a.id] === 'blocked'; }).map(function (a) { return a.id; });
 
     var snapshot = {};
-    days.forEach(function (d) { snapshot[d.date] = d.items.map(function (it) { return { id: it.id, kind: it.kind, tier: it.tier, reason: it.reason, inClass: it.inClass }; }); });
+    days.forEach(function (d) { snapshot[d.date] = d.items.map(function (it) { return { id: it.id, kind: it.kind, tier: it.tier, reason: it.reason, inClass: it.inClass, pinned: it.pinned }; }); });
 
     return { today: today, generatedAt: new Date().toISOString(), days: days, byDate: snapshot, unscheduled: unscheduled, conflicts: conflicts, missed: missed, blocked: blocked, acts: byId };
   }
@@ -490,15 +514,12 @@
     var res = {};
     cur.subjects.forEach(function (s) {
       res[s.id] = { subject: s.id, totalMins: 0, doneMins: 0, total: 0, done: 0, doing: 0, behind: 0, behindMins: 0, missed: 0,
-        expectedMins: 0, expectedDoneMins: 0, classesPast: 0, classesDone: 0, weeks: {}, upcoming: [], mastery: null };
+        expectedMins: 0, expectedDoneMins: 0, weeks: {}, upcoming: [], mastery: null };
     });
     acts.forEach(function (a) {
       var r = res[a.subject]; if (!r) return;
       var c = classify(a, state, today), st = statusOf(state, a.id);
-      if (a.type === 'class') {
-        if (c === 'past-class' || (c === 'done' && a.target && a.target < today)) { r.classesPast++; if (st === 'done') r.classesDone++; }
-        return;
-      }
+      if (a.removed) return;
       if (a.optional || a.viaRoutine || a.week == null) {
         if (a.due && c !== 'done' && a.due >= today && diffDays(today, a.due) <= 14) r.upcoming.push(a);
         return;
@@ -530,6 +551,65 @@
     return res;
   }
 
+  // ---------------------------------------------------------------- Tirelire
+  // Chaque minute de travail cochée rapporte des dollars. Calculé à partir de ta progression
+  // (pas stocké à part) : décocher une case retire ce qu'elle avait rapporté.
+  var RATE = 40;            // $ par minute de travail
+  var WEEK_BONUS = 2000;    // semaine d'une matière entièrement faite
+  // [seuil, nom, récompense à t'offrir en vrai, budget en euros]
+  var LEVELS = [
+    [0, 'Tirelire vide', '', 0],
+    [2000, 'Argent de poche', 'Un petit dessert ou ta boisson préférée', 5],
+    [10000, 'Premier salaire', 'Un goûter spécial : viennoiserie, bubble tea ou glace', 8],
+    [30000, 'Épargnante', 'Un joli carnet, des stylos ou une bougie', 15],
+    [70000, 'Investisseuse', 'Un livre ou un magazine que tu as envie de lire', 20],
+    [130000, 'Propriétaire', 'Un brunch ou une séance de cinéma', 25],
+    [220000, 'Entrepreneuse', 'Un accessoire ou un petit vêtement', 35],
+    [350000, 'Rentière', 'Un moment soin : manucure, masque, coiffeur', 45],
+    [550000, 'Presque millionnaire', 'Une sortie de ton choix avec une amie', 60],
+    [800000, 'Millionnaire', 'Le truc que tu veux depuis longtemps', 100],
+    [1200000, 'Magnat de la finance', 'Ta grande récompense de fin de semestre', 150]
+  ];
+  // Récompense d'un niveau, avec tes modifications éventuelles (state.rewards.custom).
+  function levelReward(state, i) {
+    var l = LEVELS[i], c = (((state || {}).rewards || {}).custom || {})[i] || {};
+    return { level: i, at: l[0], name: l[1], text: c.text || l[2], budget: c.budget != null ? c.budget : l[3] };
+  }
+  // Niveaux atteints mais pas encore fêtés (pour la fenêtre « tu peux t'acheter une récompense »).
+  function newRewards(state, w) {
+    var seen = ((state || {}).rewards || {}).seen || 0, out = [];
+    for (var i = seen + 1; i <= w.level; i++) if (LEVELS[i][2]) out.push(levelReward(state, i));
+    return out;
+  }
+  function wallet(cur, state, settings) {
+    state = state || emptyState();
+    var acts = activities(cur, state, settings);
+    var work = 0, routines = 0, extras = 0, bonus = 0, weeks = {};
+    acts.forEach(function (a) {
+      var done = a.mins - remainingMins(a, state);
+      work += done * RATE;
+      if (a.week == null || a.optional || a.viaRoutine || a.removed) return;
+      var k = a.subject + '-' + a.week;
+      if (!weeks[k]) weeks[k] = { all: true, any: false };
+      if (statusOf(state, a.id) !== 'done') weeks[k].all = false; else weeks[k].any = true;
+    });
+    Object.keys(weeks).forEach(function (k) { if (weeks[k].all && weeks[k].any) bonus += WEEK_BONUS; });
+    var rmins = {}; cur.routines.forEach(function (r) { rmins[r.id] = r.mins; });
+    Object.keys(state.routineLog || {}).forEach(function (d) {
+      Object.keys(state.routineLog[d]).forEach(function (rid) { routines += (rmins[rid] || 0) * RATE; });
+    });
+    (state.extras || []).forEach(function (x) { if (x.done) extras += (x.mins || 0) * RATE; });
+    var total = work + routines + extras + bonus, lvl = 0;
+    for (var i = 0; i < LEVELS.length; i++) if (total >= LEVELS[i][0]) lvl = i;
+    var next = LEVELS[lvl + 1] || null;
+    return {
+      total: total, work: work, routines: routines, extras: extras, bonus: bonus, rate: RATE, weekBonus: WEEK_BONUS,
+      level: lvl, levelName: LEVELS[lvl][1], next: next ? { at: next[0], name: next[1] } : null,
+      toNext: next ? Math.round(100 * (total - LEVELS[lvl][0]) / (next[0] - LEVELS[lvl][0])) : 100, levels: LEVELS
+    };
+  }
+  function reward(a) { return (a.mins || 0) * RATE; }
+
   // ---------------------------------------------------------------- Mutations (pures : renvoient un nouvel état)
   function setStatus(state, id, s, p) {
     var next = JSON.parse(JSON.stringify(state || emptyState()));
@@ -545,6 +625,7 @@
     weekStart: weekStart, academicWeekOf: academicWeekOf, subjectById: subjectById,
     activities: activities, statusOf: statusOf, remainingMins: remainingMins, classify: classify,
     routinesFor: routinesFor, nextInSequence: nextInSequence,
-    buildPlan: buildPlan, detectMissed: detectMissed, progress: progress, setStatus: setStatus, TIER_LABEL: TIER_LABEL
+    buildPlan: buildPlan, detectMissed: detectMissed, progress: progress, setStatus: setStatus, TIER_LABEL: TIER_LABEL,
+    wallet: wallet, reward: reward, levelReward: levelReward, newRewards: newRewards, examDate: examDate
   };
 })(typeof window !== 'undefined' ? window : globalThis);

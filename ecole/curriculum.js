@@ -34,6 +34,44 @@
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function wid(code, w) { return code + '-w' + pad(w); }
 
+  // Ta méthode, la même pour chaque cours (dans cet ordre) :
+  //  1 comprendre le sujet avec ChatGPT · 2 vidéo · 3 écrire le cours · 4 lire le cours · 5 quiz avec l'IA
+  //  6 NotebookLM · 7 fiches · 8 exercices en follow-up · 9 exercices en séminaire · 10 weekly online test
+  //  (seulement si le syllabus en prévoit un) · 11 exercices d'entraînement dans la semaine.
+  // opts.videos : liste de vidéos (SK11) au lieu d'une seule vidéo ; opts.video === false : pas de vidéo.
+  // opts.inClass : séances en classe ('followup', 'seminar', 'workshop') ; opts.test : activité de test.
+  function workflow(p, opts) {
+    var list = [], prev;
+    function step(id, type, title, mins, extra) {
+      var x = A(p + '-' + id, type, title, mins, extra || {});
+      if (!x.prereq && prev) x.prereq = [prev];
+      list.push(x); prev = x.id; return x;
+    }
+    step('understand', 'understand', 'Understanding of the topic — chercher avec ChatGPT pour comprendre le sujet', 15, { step: 1, prereq: [] });
+    var videoIds = [];
+    if (opts.videos) opts.videos.forEach(function (v, i) { videoIds.push(step('v' + (i + 1), 'video', 'Video ' + v, 9, { step: 2, group: 'Vidéos à regarder' }).id); });
+    else if (opts.video !== false) videoIds.push(step('video', 'video', 'Watch the pre-recorded lecture (~30 min)', 35, { step: 2, src: 'Syllabus : cours préenregistré à voir avant la séance' }).id);
+    step('write', 'write', 'Write the course — écrire le cours', 45, { step: 3 });
+    var readId = step('read', 'read', 'Lire le cours (relire ce que tu as écrit)', 15, { step: 4 }).id;
+    step('aiquiz', 'aiquiz', 'Quiz — mettre le cours dans l’IA et faire le quiz', 15, { step: 5 });
+    step('nlm', 'notebooklm', 'Mettre le cours dans NotebookLM et travailler avec', 20, { step: 6 });
+    var fichesId = step('fiches', 'fiches', 'Faire les fiches', 25, { step: 7 }).id;
+    var lastVideo = videoIds[videoIds.length - 1];
+    (opts.inClass || []).forEach(function (k) {
+      var t = k === 'followup' ? 'Exercices pendant la follow-up session' : k === 'seminar' ? 'Exercices pendant le séminaire' : 'Atelier en classe (workshop) — exercices';
+      list.push(A(p + '-' + k, 'inclass', t, 45, { step: k === 'followup' ? 8 : 9, session: k, inClass: true, prereq: lastVideo ? [lastVideo] : [], src: 'Fait en classe. Si tu l’as manqué, refais les exercices chez toi.' }));
+    });
+    if (opts.test) { var t = opts.test; t.step = 10; t.prereq = t.prereq || [readId]; list.push(t); }
+    list.push(A(p + '-practice', 'practice', 'Practice exercises — exercices d’entraînement pendant la semaine', 25, { step: 11, prereq: [fichesId] }));
+    return list;
+  }
+  // Lecture du manuel demandée par le syllabus (hors méthode : affichée à part).
+  function reading(id, title, mins, extra) {
+    var x = A(id, 'reading', title, mins, extra || {});
+    x.syllabus = true;
+    return x;
+  }
+
   // ================================================================ EC11 — Microeconomics
   var EC11_WEEKS = [
     { n: 1, part: 'Part 1: Fundamentals of Microeconomics', title: 'Introduction to Microeconomics',
@@ -79,22 +117,14 @@
     return EC11_WEEKS.map(function (w) {
       var p = wid('EC11', w.n), list = [];
       if (!w.revision) {
-        list.push(A(p + '-video', 'video', 'Watch the pre-recorded lecture (~30 min)', 35, { src: 'Syllabus : lectures prerecorded, ~30 min — à voir avant le follow-up' }));
-      }
-      var readIds = [];
-      w.readings.forEach(function (r) {
-        var x = A(p + '-read-' + r[0], 'reading', r[1], r[2], r[3] || {});
-        list.push(x); readIds.push(x.id);
-      });
-      if (!w.revision) {
-        list.push(A(p + '-notes', 'notes', 'Course notes / flashcards for this chapter', 25, { prereq: [p + '-video'], src: 'Ta routine (révision micro : flashcards, notes)' }));
-        list.push(A(p + '-class', 'class', 'Follow-up session (60 min) — attended', 60, { src: 'Syllabus : follow-up classroom session' }));
-        list.push(A(p + '-sem', 'exercise', 'Seminar exercises (90 min seminar)', 45, { seminar: true, prereq: [p + '-video'].concat(readIds), src: 'Syllabus : seminars = exercises + group project' }));
-        list.push(A(p + '-quiz', 'quiz', 'Weekly online test on Blackboard', 20, { dueOffset: 5, dueTime: '23:59', dueSrc: 'Syllabus : « each week by Saturday evening »', prereq: [p + '-video'].concat(readIds), weight: '15 % (tous les tests)' }));
+        list = workflow(p, { inClass: ['followup', 'seminar'], test: A(p + '-test', 'test', 'Weekly online test (Blackboard)', 20, { dueOffset: 5, dueTime: '23:59', dueSrc: 'Syllabus : « each week by Saturday evening »', weight: '15 % (tous les tests)' }) });
       } else {
         list.push(A(p + '-rev', 'revision', 'Revision session — all weeks 1–11', 90, { src: 'Syllabus : revision session the week before the exam' }));
       }
-      if (w.project) list.push(A(p + '-proj', 'project', w.project, 30, { src: 'Syllabus EC11 — group project (20 %)' }));
+      w.readings.forEach(function (r) {
+        list.push(reading(p + '-read-' + r[0], 'Lire dans le manuel : ' + r[1].replace(/^Krugman & Wells — /, ''), r[2], r[3] || {}));
+      });
+      if (w.project) list.push(A(p + '-proj', 'project', w.project, 30, { syllabus: true, src: 'Syllabus EC11 — group project (20 %)' }));
       return { n: w.n, part: w.part, title: w.title, topics: w.topics, activities: list };
     });
   }
@@ -127,17 +157,12 @@
 
   function buildMA11() {
     return MA11_WEEKS.map(function (w) {
-      var p = wid('MA11', w.n), list = [];
-      list.push(A(p + '-video', 'video', 'Watch the pre-recorded lecture (~30 min)', 35, { src: 'Syllabus : lectures prerecorded (~30 min)' }));
-      var secIds = [];
+      var p = wid('MA11', w.n);
+      var list = workflow(p, { inClass: ['followup', 'seminar'], test: A(p + '-mylab', 'test', 'MyLab weekly assessment ' + w.n + '/11 (5–10 questions)', 45, { dueOffset: 7, dueTime: '08:00', dueSrc: 'Ta routine : deadline MyLab le lundi — vérifie l’heure exacte sur MyLab', weight: '10 % (les 11 devoirs)' }) });
       w.sections.forEach(function (s, i) {
-        var x = A(p + '-sec' + (i + 1), 'reading', 'Haeussler — ' + s[0], s[1], { group: 'Sections du manuel', prereq: i === 0 ? [] : [p + '-sec' + i] });
-        list.push(x); secIds.push(x.id);
+        list.push(reading(p + '-sec' + (i + 1), 'Lire dans le manuel : section ' + s[0], s[1], { prereq: i === 0 ? [] : [p + '-sec' + i] }));
       });
-      list.push(A(p + '-class', 'class', 'Follow-up session (60 min) — attended', 60, { src: 'Syllabus : follow-up session' }));
-      list.push(A(p + '-sem', 'exercise', 'Seminar exercises (90 min seminar)', 45, { seminar: true, prereq: [p + '-video'], src: 'Syllabus : seminars = practical exercises' }));
-      list.push(A(p + '-mylab', 'assignment', 'MyLab weekly assessment ' + w.n + '/11 (5–10 questions)', 45, { dueOffset: 7, dueTime: '08:00', dueSrc: 'Ta routine : deadline MyLab le lundi — vérifie l’heure exacte sur MyLab', prereq: [p + '-video'], weight: '10 % (les 11 devoirs)' }));
-      if (w.revision) list.push(A(p + '-rev', 'revision', 'Revision session (before the final exam)', 90, { src: 'Syllabus : revision session followed by final exam' }));
+      if (w.revision) list.push(A(p + '-rev', 'revision', 'Revision session (before the final exam)', 90, { syllabus: true, src: 'Syllabus : revision session followed by final exam' }));
       return { n: w.n, title: w.title, chapter: w.chapter, note: w.note, flags: w.split ? [w.split] : [], topics: w.sections.map(function (s) { return s[0]; }), activities: list };
     });
   }
@@ -165,25 +190,21 @@
       n: 0, title: 'Before the course — required readings',
       topics: ['Lectures obligatoires avant le début du cours (avancées via ta routine « Lecture du livre d’IR »)'],
       activities: [
-        A('IR11-pre-allison', 'reading', 'Graham Allison — Destined for War. Can America and China escape Thucydides’s trap? (2017)', 0, { viaRoutine: 'ir-book', src: 'Syllabus : required before the beginning of the course' }),
-        A('IR11-pre-ambrose', 'reading', 'Ambrose & Brinkley — Rise to globalism: US American Foreign Policy since 1938 (2012)', 0, { viaRoutine: 'ir-book', src: 'Syllabus : required before the beginning of the course' }),
-        A('IR11-pre-toft', 'reading', "Monica Duffy Toft — 'The return of Spheres of Influence', Foreign Affairs (13 March 2025)", 30, { src: 'Syllabus : required before the beginning of the course' })
+        reading('IR11-pre-allison', 'Graham Allison — Destined for War. Can America and China escape Thucydides’s trap? (2017)', 0, { viaRoutine: 'ir-book', src: 'Syllabus : required before the beginning of the course' }),
+        reading('IR11-pre-ambrose', 'Ambrose & Brinkley — Rise to globalism: US American Foreign Policy since 1938 (2012)', 0, { viaRoutine: 'ir-book', src: 'Syllabus : required before the beginning of the course' }),
+        reading('IR11-pre-toft', "Monica Duffy Toft — 'The return of Spheres of Influence', Foreign Affairs (13 March 2025)", 30, { src: 'Syllabus : required before the beginning of the course' })
       ]
     }];
     IR11_WEEKS.forEach(function (w) {
-      var p = wid('IR11', w.n), list = [], refs = [];
-      list.push(A(p + '-video', 'video', 'Watch the pre-recorded lecture (~30 min)', 35, { src: 'Syllabus : lectures prerecorded — à voir avant le follow-up' }));
-      var readIds = [];
+      var p = wid('IR11', w.n), refs = [];
+      var list = workflow(p, { inClass: ['followup', 'seminar'] });
       w.ch.forEach(function (c) {
         var id = 'IR11-best-ch' + pad(c);
         if (seen[id]) { refs.push({ id: id, week: seen[id] }); return; }
         seen[id] = w.n;
-        list.push(A(id, 'reading', 'Best et al. (2024) — Chapter ' + c, 45, { group: 'Required reading' }));
-        readIds.push(id);
+        list.push(reading(id, 'Lire dans le manuel : Chapter ' + c, 45));
       });
-      list.push(A(p + '-notes', 'notes', 'Notes on the lecture & readings', 25, { prereq: [p + '-video'], src: 'Ta routine (préparation IR : lectures, vidéos, notes)' }));
-      list.push(A(p + '-class', 'class', 'Follow-up session — attended', 60, { src: 'Syllabus : follow-up session' }));
-      list.push(A(p + '-sem', 'prep', w.n === 1 ? 'Seminar: allocation of presentation topics' : 'Seminar preparation — think through the 3 presentation questions', w.n === 1 ? 10 : 30, { seminar: true, prereq: [p + '-video'], questions: w.n === 1 ? null : w.seminar, src: 'Syllabus : presentation topics in seminars' }));
+      list.push(A(p + '-semprep', 'prep', w.n === 1 ? 'Seminar: allocation of presentation topics' : 'Seminar preparation — think through the 3 presentation questions', w.n === 1 ? 10 : 30, { syllabus: true, prereq: [p + '-video'], questions: w.n === 1 ? null : w.seminar, src: 'Syllabus : presentation topics in seminars' }));
       weeks.push({ n: w.n, title: w.title, topics: w.n === 1 ? w.seminar : w.seminar.map(function (q, i) { return 'Seminar Q' + (i + 1) + ' — ' + q; }), refs: refs, activities: list });
     });
     return weeks;
@@ -206,14 +227,11 @@
 
   function buildMG11() {
     return MG11_WEEKS.map(function (w) {
-      var p = wid('MG11', w.n), list = [];
-      list.push(A(p + '-video', 'video', 'Lecture: ' + w.lecture + ' (~30 min video)', 35, { src: 'Syllabus : lectures prerecorded' }));
-      var readIds = [];
-      w.readings.forEach(function (r) { var x = A(p + '-read-' + r[0], 'reading', r[1], r[2]); list.push(x); readIds.push(x.id); });
-      list.push(A(p + '-notes', 'notes', 'Notes on the lecture & readings', 25, { prereq: [p + '-video'], src: 'Ta routine (préparation Business : lectures, supports de cours)' }));
-      list.push(A(p + '-class', 'class', 'Follow-up session — attended' + (w.extra ? ' (+ ' + w.extra + ')' : ''), 60, { src: 'Syllabus : follow-up session' }));
-      list.push(A(p + '-sem', 'exercise', 'Seminar: ' + w.seminar, 45, { seminar: true, prereq: [p + '-video'], src: 'Syllabus : seminar = étape du business plan de groupe' }));
-      list.push(A(p + '-proj', 'project', w.n === 11 ? 'Business plan — final presentation ready' : 'Business plan — group follow-up after “' + w.seminar + '”', w.n === 11 ? 90 : 30, { src: 'Syllabus MG11 — group project (40 %)' }));
+      var p = wid('MG11', w.n);
+      var list = workflow(p, { inClass: ['followup', 'seminar'] });
+      list.forEach(function (a) { if (a.type === 'video') a.title = 'Watch the pre-recorded lecture: ' + w.lecture; if (a.session === 'seminar') a.title = 'Exercices pendant le séminaire : ' + w.seminar; });
+      w.readings.forEach(function (r) { list.push(reading(p + '-read-' + r[0], 'Lire : ' + r[1], r[2])); });
+      list.push(A(p + '-proj', 'project', w.n === 11 ? 'Business plan — final presentation ready' : 'Business plan — group follow-up after “' + w.seminar + '”', w.n === 11 ? 90 : 30, { syllabus: true, src: 'Syllabus MG11 — group project (40 %)' }));
       return { n: w.n, title: 'Session ' + w.n + ' — ' + w.lecture, topics: ['Lecture | ' + w.lecture].concat(w.extra ? [w.extra] : []).concat(['Seminar | ' + w.seminar]), activities: list };
     });
   }
@@ -235,13 +253,10 @@
 
   function buildSK11() {
     return SK11_SESSIONS.map(function (s) {
-      var p = wid('SK11', s.n), list = [], vids = [];
-      s.videos.forEach(function (v, i) {
-        var x = A(p + '-v' + (i + 1), 'video', 'Video ' + v, 9, { group: 'Videos to watch before class', src: 'Syllabus : vidéos de 5–10 min, ~1 h de préparation par atelier' });
-        list.push(x); vids.push(x.id);
-      });
-      if (s.prep) list.push(A(p + '-prep', s.project ? 'project' : 'prep', s.prep, s.project ? 120 : 45, { src: 'Syllabus SK11' }));
-      list.push(A(p + '-class', 'class', 'Classroom workshop — attended & participated', 90, { src: 'Syllabus : participation 20 %' }));
+      var p = wid('SK11', s.n), list;
+      if (s.videos.length) list = workflow(p, { videos: s.videos, inClass: ['workshop'] });
+      else list = [A(p + '-workshop', 'inclass', 'Atelier en classe (workshop)', 45, { session: 'workshop', inClass: true, step: 9 })];
+      if (s.prep) list.push(A(p + '-prep', s.project ? 'project' : 'prep', s.prep, s.project ? 120 : 45, { syllabus: true, src: 'Syllabus SK11' }));
       return { n: s.n, title: 'Session ' + s.n + ' — ' + s.title, note: s.note, topics: s.videos.length ? s.videos : [s.prep], activities: list };
     });
   }
@@ -261,11 +276,13 @@
 
   function buildLE11() {
     var weeks = LE11_UNITS.map(function (u) {
-      var p = wid('LE11', u.n), list = [];
-      if (u.lecture) list.push(A(p + '-video', 'video', u.lecture, 30, { releaseUnknown: true, src: 'Syllabus : vidéo à voir avant l’atelier — dès qu’elle est disponible' }));
-      u.readings.forEach(function (r) { list.push(A(p + '-read-' + r[0], 'reading', r[1], r[2])); });
-      if (u.optional) list.push(A(p + '-opt', 'reading', 'Optional: ' + u.optional, 30, { optional: true }));
-      list.push(A(p + '-class', 'class', (u.workshop || 'Introductory session') + ' — attended', 90, { src: 'Syllabus : collaborative work 30 % (évaluée en atelier)' }));
+      var p = wid('LE11', u.n), list;
+      if (u.lecture) {
+        list = workflow(p, { inClass: ['workshop'] });
+        list.forEach(function (a) { if (a.type === 'video') { a.title = 'Watch ' + u.lecture; a.src = 'Syllabus : vidéo à voir avant l’atelier — dès qu’elle est disponible'; } });
+      } else list = [A(p + '-workshop', 'inclass', 'Introductory session (en classe)', 45, { session: 'workshop', inClass: true, step: 9 })];
+      u.readings.forEach(function (r) { list.push(reading(p + '-read-' + r[0], 'Lire : ' + r[1].replace('Cottrell (2019) The study skills handbook — ', 'Cottrell — '), r[2])); });
+      if (u.optional) list.push(reading(p + '-opt', 'Facultatif : ' + u.optional, 30, { optional: true }));
       return { n: u.n, title: u.workshop || u.title, flags: ['Semaine estimée : le syllabus donne l’ordre des ateliers, pas leurs dates.'], refsText: u.refs, topics: [u.lecture, u.workshop].filter(Boolean), activities: list };
     });
     weeks.push({
@@ -279,7 +296,7 @@
         A('LE11-dig-library', 'video', 'Using the school library and academic resources', 20, { optional: true }),
         A('LE11-dig-resilience', 'video', 'Resilience, growth mindset; motivation and managing academic challenges', 30, { optional: true }),
         A('LE11-dig-stress', 'video', 'Managing stress and well-being during studies and exams', 30, { optional: true }),
-        A('LE11-test', 'quiz', 'Online test: Academic Integrity and Academic Misconduct (20 %)', 40, { src: 'Syllabus : test individuel en ligne — date non précisée', needsDate: true })
+        A('LE11-test', 'test', 'Online test: Academic Integrity and Academic Misconduct (20 %)', 40, { syllabus: true, src: 'Syllabus : test individuel en ligne — date non précisée', needsDate: true })
       ]
     });
     return weeks;
@@ -289,42 +306,51 @@
   // Couleurs reprises de tes dossiers ESCP B1. `prepOffset` = jour (après le lundi de la semaine)
   // avant lequel la préparation de la semaine est visée — un objectif, jamais une deadline.
   var SUBJECTS = [
-    { id: 'MA11', name: 'Fundamentals of Mathematics 1', short: 'Maths', emoji: '📐', color: '#E2577F', soft: '#FBE1E9', sequential: true, prepOffset: 6, prepDays: [4, 6, 0, 1, 2, 3, 5], ects: 6,
-      prepNote: 'Objectif : semaine bouclée avant le MyLab du lundi suivant.', place: 'L’Observatoire' },
-    { id: 'EC11', name: 'Microeconomics', short: 'Micro', emoji: '📈', color: '#9B7BC4', soft: '#EEE6F7', sequential: true, prepOffset: 5, prepDays: [5, 1, 3, 6], ects: 6,
-      prepNote: 'Objectif : vidéo + lecture avant le test en ligne du samedi.', place: 'Le Marché' },
-    { id: 'IR11', name: 'International Relations & European/World History', short: 'IR', emoji: '🌍', color: '#F28C28', soft: '#FDEBD8', prepOffset: 0, prepDays: [4, 0], ects: 6,
-      prepNote: 'Objectif : préparation finie avant le cours du lundi.', place: 'L’Ambassade' },
-    { id: 'MG11', name: 'Introduction to Business Organisations & Strategy', short: 'Business', emoji: '💼', color: '#E888AC', soft: '#FCE7EF', prepOffset: 0, prepDays: [5, 4, 0], ects: 6,
-      prepNote: 'Objectif : préparation finie avant le cours du lundi.', place: 'La Tour Business' },
-    { id: 'SK11', name: 'Presentation, Discussion and Rhetoric Skills', short: 'Rhétorique', emoji: '🎤', color: '#E3A92B', soft: '#FBF0D6', prepOffset: 2, prepDays: [2, 1, 0], ects: 3,
-      prepNote: 'Objectif : vidéos vues avant l’atelier (jour à confirmer dans Réglages).', place: 'Le Théâtre' },
-    { id: 'LE11', name: 'Study Skills', short: 'Study Skills', emoji: '📚', color: '#7FA84A', soft: '#E9F2DC', prepOffset: 5, prepDays: [6, 0], ects: 3, weeksEstimated: true,
-      prepNote: 'Vidéos à faire le samedi, dès qu’elles sont disponibles.', place: 'La Bibliothèque' },
-    { id: 'ZH', name: 'Mandarin Chinese', short: 'Chinois', emoji: '🀄', color: '#EF7A63', soft: '#FDE5DF', noSyllabus: true, place: 'Le Salon de thé',
+    // color = pastel principal, soft = fond très clair, ink = texte lisible sur ces fonds.
+    { id: 'MA11', name: 'Fundamentals of Mathematics 1', short: 'Maths', color: '#EBA3BA', soft: '#F9DDE6', ink: '#9E4F6B', sequential: true, prepOffset: 6, prepDays: [4, 6, 0, 1, 2, 3, 5], ects: 6,
+      books: ['Haeussler, Paul & Wood — Introductory Mathematical Analysis (14e éd.) : le manuel officiel du cours'],
+      prepNote: 'Objectif : semaine bouclée avant le MyLab du lundi suivant.' },
+    { id: 'EC11', name: 'Microeconomics', short: 'Micro', color: '#C4ADE0', soft: '#ECE3F6', ink: '#76579B', sequential: true, prepOffset: 5, prepDays: [5, 1, 3, 6], ects: 6,
+      books: ['Krugman & Wells — Microeconomics (3e éd.) : le manuel officiel du cours'],
+      prepNote: 'Objectif : cours étudié avant le weekly online test du samedi.' },
+    { id: 'IR11', name: 'International Relations & European/World History', short: 'IR', color: '#F4C095', soft: '#FCE8D6', ink: '#A2653A', prepOffset: 0, prepDays: [4, 0], ects: 6,
+      books: ['Best, Hanhimäki, Maiolo & Schulze — International History of the Twentieth Century and Beyond (4e éd.) : le manuel officiel du cours'],
+      prepNote: 'Objectif : préparation finie avant le cours du lundi.' },
+    { id: 'MG11', name: 'Introduction to Business Organisations & Strategy', short: 'Business', color: '#F2B8C9', soft: '#FCE6EC', ink: '#A0566F', prepOffset: 0, prepDays: [5, 4, 0], ects: 6,
+      books: ['Johnson et al. — Exploring Strategy (13e éd.)', 'Bovee, Paul & Thill — Business in Action (10e éd.)', 'Sola & Couturier — How to Think Strategically'],
+      prepNote: 'Objectif : préparation finie avant le cours du lundi.' },
+    { id: 'SK11', name: 'Presentation, Discussion and Rhetoric Skills', short: 'Rhétorique', color: '#EDD38A', soft: '#FAF0CF', ink: '#8E7024', prepOffset: 2, prepDays: [2, 1, 0], ects: 3,
+      books: ['Pas de manuel obligatoire : tout est dans les vidéos Blackboard'],
+      prepNote: 'Objectif : vidéos vues avant l’atelier du mercredi. L’examen final a eu lieu en octobre.' },
+    { id: 'LE11', name: 'Study Skills', short: 'Study Skills', color: '#B6D39A', soft: '#E5F0D8', ink: '#5B7C42', prepOffset: 5, prepDays: [6, 0], ects: 3, weeksEstimated: true,
+      books: ['Cottrell — The Study Skills Handbook (5e éd.) : le manuel officiel du cours'],
+      prepNote: 'Vidéos à faire le samedi, dès qu’elles sont disponibles.',
+      finished: 'Examen final passé en octobre : ce qui reste devient facultatif, sans rattrapage.' },
+    { id: 'ZH', name: 'Mandarin Chinese', short: 'Chinois', color: '#EFAE9C', soft: '#FBE2DA', ink: '#9E5A47', noSyllabus: true,
       prepNote: 'Pas de syllabus fourni : suivi par tes routines (cours du mardi, pratique et vocabulaire quotidiens).' },
-    { id: 'IT', name: 'Italiano', short: 'Italien', emoji: '🍋', color: '#5FA3D9', soft: '#E1EFFA', noSyllabus: true, place: 'La Piazza',
+    { id: 'IT', name: 'Italiano', short: 'Italien', color: '#A9CCE8', soft: '#E0EEF8', ink: '#4D7A9C', noSyllabus: true,
       prepNote: 'Pas de syllabus fourni : suivi par tes routines (fiche du lundi, révision du dimanche).' }
   ];
 
   var BUILDERS = { EC11: buildEC11, MA11: buildMA11, IR11: buildIR11, MG11: buildMG11, SK11: buildSK11, LE11: buildLE11 };
   SUBJECTS.forEach(function (s) { s.weeks = BUILDERS[s.id] ? BUILDERS[s.id]() : []; });
 
-  // ================================================================ Évaluations (dates à saisir)
+  // ================================================================ Évaluations
+  // Dates des finals : calendrier « Fall final exams – B1 ». Les autres ne sont pas encore datées.
   var ASSESSMENTS = [
     { id: 'EC11-mid', subject: 'EC11', title: 'Midterm test (MCQ, 45 min) — weeks 1–6', weight: 15, when: 'After week 6', date: null },
     { id: 'EC11-proj', subject: 'EC11', title: 'Group project presentation', weight: 20, when: 'Weeks 8–9 (groups 1–3 / 4–6)', date: null },
-    { id: 'EC11-final', subject: 'EC11', title: 'Final exam (weeks 1–11)', weight: 50, when: 'End of semester', date: null },
+    { id: 'EC11-final', subject: 'EC11', title: 'Final exam (weeks 1–11)', weight: 50, when: 'Mercredi 9 décembre · 9 h 30 · 1 h 30', date: '2026-12-09', time: '09:30' },
     { id: 'MA11-mid', subject: 'MA11', title: 'Mid-term exam (1.5 h, MCQ)', weight: 30, when: 'Around week 6 or 7', date: null },
-    { id: 'MA11-final', subject: 'MA11', title: 'Final exam (2 h, MCQ, all sessions)', weight: 60, when: 'End of semester', date: null },
+    { id: 'MA11-final', subject: 'MA11', title: 'Final exam (2 h, MCQ, all sessions)', weight: 60, when: 'Lundi 14 décembre · 14 h · 2 h', date: '2026-12-14', time: '14:00' },
     { id: 'IR11-pres', subject: 'IR11', title: 'Group presentation (15 min)', weight: 20, when: 'Topic allocated in week 1', date: null },
     { id: 'IR11-mid', subject: 'IR11', title: 'Mid-term exam (2 h, 2 essays out of 3)', weight: 20, when: 'Mid-semester', date: null },
-    { id: 'IR11-final', subject: 'IR11', title: 'Final exam (2 h, 2 essays out of 3)', weight: 50, when: 'End of semester', date: null },
+    { id: 'IR11-final', subject: 'IR11', title: 'Final exam (2 h, 2 essays out of 3)', weight: 50, when: 'Jeudi 10 décembre · 10 h · 2 h', date: '2026-12-10', time: '10:00' },
     { id: 'MG11-proj', subject: 'MG11', title: 'Business plan presentation (group project)', weight: 40, when: 'Session 11', date: null },
-    { id: 'MG11-final', subject: 'MG11', title: 'Final exam (closed book)', weight: 50, when: 'End of semester', date: null },
+    { id: 'MG11-final', subject: 'MG11', title: 'Final exam (closed book)', weight: 50, when: 'Vendredi 11 décembre · 10 h · 2 h', date: '2026-12-11', time: '10:00' },
     { id: 'SK11-essay', subject: 'SK11', title: 'Individual essay (closed-book, sessions 1–6)', weight: 40, when: 'Mid-term point', date: null },
     { id: 'SK11-team', subject: 'SK11', title: 'Final team presentation', weight: 40, when: 'Sessions 11 & 12', date: null },
-    { id: 'LE11-final', subject: 'LE11', title: 'Final exam — individual academic essay', weight: 50, when: 'End of term', date: null }
+    { id: 'LE11-final', subject: 'LE11', title: 'Final exam — individual academic essay', weight: 50, when: 'Passé en octobre', date: null, past: true }
   ];
 
   // ================================================================ Routines (ta structure hebdo)
@@ -355,13 +381,23 @@
     { id: 'week-review', title: 'Revue de la semaine qui arrive : charge et priorités', mins: 15, days: [0] }
   ];
 
-  // Emploi du temps de départ : uniquement ce que tu as donné (jours), sans horaires inventés.
+  // Emploi du temps : repris de ton calendrier ESCP (semaine du 2 novembre 2026).
+  // Amphithéâtre = follow-up session (1 h), salle de cours = séminaire (1 h 30).
   var TIMETABLE = [
-    { id: 'tt-it', subject: 'IT', kind: 'language', day: 1, start: '', end: '' },
-    { id: 'tt-ir', subject: 'IR11', kind: 'followup', day: 1, start: '', end: '' },
-    { id: 'tt-mg', subject: 'MG11', kind: 'followup', day: 1, start: '', end: '' },
-    { id: 'tt-zh', subject: 'ZH', kind: 'language', day: 2, start: '', end: '' }
+    { id: 'tt-it', subject: 'IT', kind: 'language', day: 1, start: '08:15', end: '10:15' },
+    { id: 'tt-mg-fu', subject: 'MG11', kind: 'followup', day: 1, start: '13:00', end: '14:00' },
+    { id: 'tt-ir-fu', subject: 'IR11', kind: 'followup', day: 1, start: '14:15', end: '15:15' },
+    { id: 'tt-ma-fu', subject: 'MA11', kind: 'followup', day: 2, start: '09:15', end: '10:15' },
+    { id: 'tt-ec-fu', subject: 'EC11', kind: 'followup', day: 2, start: '11:45', end: '12:45' },
+    { id: 'tt-zh', subject: 'ZH', kind: 'language', day: 2, start: '13:30', end: '15:30' },
+    { id: 'tt-ec-sem', subject: 'EC11', kind: 'seminar', day: 3, start: '08:30', end: '10:00' },
+    { id: 'tt-sk-ws', subject: 'SK11', kind: 'workshop', day: 3, start: '13:00', end: '14:30' },
+    { id: 'tt-ir-sem', subject: 'IR11', kind: 'seminar', day: 3, start: '14:45', end: '16:15' },
+    { id: 'tt-ma-sem', subject: 'MA11', kind: 'seminar', day: 4, start: '08:30', end: '10:00' },
+    { id: 'tt-mg-sem', subject: 'MG11', kind: 'seminar', day: 4, start: '10:15', end: '11:45' }
   ];
+  // Ancien emploi du temps de départ (jours seulement) : remplacé une fois chez toi par le vrai.
+  var TIMETABLE_V1_IDS = ['tt-it', 'tt-ir', 'tt-mg', 'tt-zh'];
 
   root.SCHOOL_CURRICULUM = {
     version: 1,
@@ -369,6 +405,8 @@
     subjects: SUBJECTS,
     assessments: ASSESSMENTS,
     routines: ROUTINES,
-    timetable: TIMETABLE
+    timetable: TIMETABLE,
+    timetableVersion: 2,
+    timetableV1Ids: TIMETABLE_V1_IDS
   };
 })(typeof window !== 'undefined' ? window : globalThis);
