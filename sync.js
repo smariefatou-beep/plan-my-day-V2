@@ -11,6 +11,12 @@
   function setGateHtml(html) { var g = gate(); if (g) g.innerHTML = html; }
   function hideGate() { var g = gate(); if (g) g.remove(); }
   function skipKey(key) { return key.indexOf('sb-') === 0 || key === HYDRATED_FLAG || key === META_KEY; }
+  function hasLocalData() {
+    for (var i = 0; i < localStorage.length; i++) {
+      if (!skipKey(localStorage.key(i))) return true;
+    }
+    return false;
+  }
 
   function getMeta() {
     try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch (e) { return {}; }
@@ -143,6 +149,14 @@
     });
   }
 
+  function revealApp(session) {
+    hideGate();
+    window.__coUserEmail = session.user.email;
+    document.querySelectorAll('.co-account-email').forEach(function (el) {
+      el.textContent = session.user.email;
+    });
+  }
+
   function afterAuth(client, session) {
     var hydrated = sessionStorage.getItem(HYDRATED_FLAG) === '1';
     if (!hydrated) {
@@ -156,15 +170,23 @@
           location.reload();
         })
         .catch(function (err) {
-          setGateHtml(errorHtml('Impossible de joindre la base de données. Vérifie que la table "kv_store" existe bien dans ton projet Supabase (voir supabase-setup.sql).<br><br><span style="color:#999;">' + (err && err.message ? err.message : '') + '</span>'));
+          if (!hasLocalData()) {
+            setGateHtml(errorHtml('Impossible de joindre la base de données. Vérifie que la table "kv_store" existe bien dans ton projet Supabase (voir supabase-setup.sql).<br><br><span style="color:#999;">' + (err && err.message ? err.message : '') + '</span>'));
+            return;
+          }
+          // The service is unreachable (project paused/down), but this device
+          // already has data from a previous session — don't lock the user
+          // out of their own data. Reveal the app in a degraded/offline
+          // state; the periodic sync loop will retry and reconcile once the
+          // connection comes back.
+          sessionStorage.setItem(HYDRATED_FLAG, '1');
+          revealApp(session);
+          setSyncStatus('Hors ligne : connexion au service impossible (' + (err && err.message ? err.message : 'inconnue') + ')');
+          enableLiveSync(client, session.user.id);
         });
       return;
     }
-    hideGate();
-    window.__coUserEmail = session.user.email;
-    document.querySelectorAll('.co-account-email').forEach(function (el) {
-      el.textContent = session.user.email;
-    });
+    revealApp(session);
     setSyncStatus('En attente de modifications');
     enableLiveSync(client, session.user.id);
   }
