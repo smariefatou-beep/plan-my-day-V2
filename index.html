@@ -363,7 +363,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Urbanist', sans-
 <body>
 
 <div id="sync-gate" style="position:fixed;inset:0;background:#fff;z-index:999999;display:flex;align-items:center;justify-content:center;"></div>
-<script src="sync.js?v=7"></script>
+<script src="sync.js?v=8"></script>
 
 <div id="app">
 
@@ -558,6 +558,8 @@ html, body { height: 100%; background: var(--bg); font-family: 'Urbanist', sans-
         </div>
         <div id="myday-today-tasks-list"></div>
       </div>
+      <!-- École OS : tâches et routines d'étude du jour (même fiches que le module École) -->
+      <div style="padding:8px 20px 4px;" id="myday-school-wrap"></div>
 
       <!-- Hour grid -->
       <div style="position:relative;padding:0 0 40px;" id="planner-hour-grid"></div>
@@ -1914,6 +1916,10 @@ html, body { height: 100%; background: var(--bg); font-family: 'Urbanist', sans-
       <svg fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><path d="M9 6h1M17.5 9.5v1M17.5 17.5v1M6 17.5v1" stroke-linecap="round" stroke-width="2"/></svg>
       <span class="nav-label">Content OS</span>
     </div>
+    <div class="nav-item" onclick="window.location.href='ecole/index.html'" title="Ouvrir École OS">
+      <svg fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 9l10-5 10 5-10 5L2 9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6"/></svg>
+      <span class="nav-label">École</span>
+    </div>
     <div class="nav-item nav-item-more" onclick="showPage('page-more',this)" data-page="page-more">
       <svg fill="none" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.5" stroke-width="2"/><circle cx="12" cy="12" r="1.5" stroke-width="2"/><circle cx="12" cy="18" r="1.5" stroke-width="2"/></svg>
       <span class="nav-label">More</span>
@@ -2777,6 +2783,7 @@ function renderTodaysTasksList() {
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>`).join('') : `<div style="font-size:12px;color:var(--gray-light);padding:6px 0;">Rien en attente — bien joué.</div>`;
+  if (window.renderSchoolToday) window.renderSchoolToday(plannerCurrentDate);
 }
 
 function addUnscheduledTask() {
@@ -6059,6 +6066,7 @@ const APP_DATA_KEYS = [
   'quarter_plans','monthly_plans','weekly_plans',
   'networking_people','networking_locations','networking_categories',
   'todo_lists','todo_tasks',
+  'school_state','school_settings','school_plan','school_history',
 ];
 
 function exportAllData() {
@@ -11476,5 +11484,9 @@ document.addEventListener('keydown', function(e) {
   }
 });
 </script>
+<script src="ecole/curriculum.js?v=1"></script>
+<script src="ecole/engine.js?v=1"></script>
+<script src="ecole/store.js?v=1"></script>
+<script src="ecole/daily-widget.js?v=1"></script>
 </body>
 </html>

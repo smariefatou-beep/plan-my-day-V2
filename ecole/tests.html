@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>École OS — tests</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Fredoka', system-ui, sans-serif; background: #FFF9F5; color: #3A1D4A; padding: 24px 16px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  p { color: #6E5579; font-size: 14px; margin-bottom: 16px; }
+  pre { white-space: pre-wrap; background: #fff; border-radius: 18px; padding: 16px; font: 14px/1.7 'Fredoka', system-ui, sans-serif; box-shadow: 0 6px 24px rgba(122,59,160,.1); }
+  a { color: #FF4F9A; }
+</style>
+</head>
+<body>
+<h1>🧪 Tests du moteur de planification</h1>
+<p>Les 15 scénarios demandés, sur une copie isolée de tes données (ta vraie progression n’est jamais touchée). <a href="index.html">← Retour à École OS</a></p>
+<pre id="out">…</pre>
+<script src="curriculum.js?v=1"></script>
+<script src="engine.js?v=1"></script>
+<script src="store.js?v=1"></script>
+<script src="tests.js?v=1"></script>
+<script>document.getElementById('out').textContent = window.SCHOOL_TEST_RESULTS.lines.join('\n');</script>
+</body>
+</html>
