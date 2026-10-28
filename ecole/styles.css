@@ -536,3 +536,27 @@ h2.title { font-weight: 400; font-size: 28px; letter-spacing: .06em; color: var(
   .tab { font-size: 11px; letter-spacing: 0; }
   .t-title { font-size: 15px; }
 }
+
+/* ---------------------------------------------------------------- v6 : plein écran + semaine aérée */
+/* L'île prend toute la largeur : juste un fin liseré rose tout autour, comme en haut. */
+.app { max-width: none; margin: 12px 12px 0; padding-left: 28px; padding-right: 28px; }
+@media (max-width: 640px) { .app { margin: 8px 8px 0; padding-left: 14px; padding-right: 14px; } }
+
+/* Semaine : des colonnes assez larges pour lire, qui passent à la ligne au lieu de s'écraser */
+.week-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+@media (min-width: 900px) { .week-days { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; } }
+@media (max-width: 640px) { .week-days { grid-template-columns: 1fr; gap: 12px; } }
+.wday { padding: 16px 16px 14px; }
+.wday-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.wday-h span { display: inline; font-size: 13px; }
+.wtask { gap: 10px; padding: 11px 2px; align-items: center; }
+.wtask .w-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.wtask .t-subj { margin-bottom: 0; }
+.w-title { font-size: 14.5px; line-height: 1.45; color: var(--ink); }
+.w-meta { font-size: 12.5px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.wtask.done .w-title { text-decoration: line-through; text-decoration-color: var(--rose-2); }
+.wtask.done { text-decoration: none; }
+.w-del { width: 30px; height: 30px; color: var(--ink-3); border: 1.2px solid transparent; }
+.w-del:hover { border-color: #F1C3CF; }
+.load-txt { font-size: 12px; }
+.w-foot { font-size: 12.5px; margin-top: 10px; }

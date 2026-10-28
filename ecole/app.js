@@ -20,9 +20,9 @@
   var BUILDING = { MA11: 'cottage', EC11: 'stall', IR11: 'manor', MG11: 'shop', SK11: 'gazebo', LE11: 'nook', ZH: 'teahouse', IT: 'piazza' };
   // Une plante par routine (jamais deux fois la même le même jour).
   var PLANT_OF = {
-    'math-practice': 'sunflower', 'math-practice-thu': 'sunflower', 'zh-practice': 'peony', 'zh-vocab': 'tulip', 'ir-book': 'lavender',
-    'it-sheet': 'lemon', 'zh-homework': 'daisy', 'micro-review': 'hydrangea', 'zh-prep-tue': 'muguet', 'sem-consolidate': 'rose',
-    'group-update': 'forget', 'check-new': 'cactus', 'mylab-check': 'bell', 'biz-monday': 'poppy', 'it-review': 'lemon',
+    'math-practice': 'sunflower', 'math-practice-thu': 'sunflower', 'zh-practice': 'peony', 'ir-book': 'lavender',
+    'it-sheet': 'lemon', 'zh-homework': 'daisy', 'micro-review': 'hydrangea', 'zh-prep-tue': 'muguet',
+    'check-new': 'cactus', 'mylab-check': 'bell', 'biz-monday': 'poppy', 'it-review': 'lemon',
     'zh-prep-sun': 'muguet', 'week-review': 'daisy'
   };
   function plantOf(r, i) { var k = Object.keys(ART.PLANTS); return PLANT_OF[r.id] || k[i % k.length]; }
@@ -60,6 +60,7 @@
       setTimeout(function (x) { return function () { x.remove(); }; }(b), 1000);
     }
   }
+  var XMARK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
   var CHECK = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#6D4D57" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   // ---------------------------------------------------------------- briques
@@ -202,7 +203,7 @@
   function viewWeek() {
     var page = ui.weekPage, days = plan.days.slice(page * 7, page * 7 + 7);
     var total = days.reduce(function (s, d) { return s + d.load + d.routineMins; }, 0);
-    var h = '<h2 class="title">Ma semaine</h2><div class="subtitle">Touche une tâche pour la déplacer à un autre jour, × pour la supprimer, « Ajouter » pour mettre ce que tu veux sur une journée.</div>';
+    var h = '<h2 class="title">Ma semaine</h2><div class="subtitle">Touche une tâche pour la déplacer à un autre jour, la petite croix pour la supprimer, « Ajouter » pour mettre ce que tu veux sur une journée.</div>';
     h += '<div class="week-nav"><button class="btn soft small" data-a="wpage" data-d="-1" ' + (page === 0 ? 'disabled style="opacity:.4"' : '') + '>← 7 jours</button>' +
       '<b>' + shortDate(days[0].date) + ' → ' + shortDate(days[days.length - 1].date) + ' · ' + hm(total) + '</b>' +
       '<button class="btn soft small" data-a="wpage" data-d="1" ' + (page === 1 ? 'disabled style="opacity:.4"' : '') + '>7 jours →</button></div>';
@@ -217,15 +218,15 @@
         var a = act(it.id); if (!a) return;
         var s = subj(a.subject);
         var tag = it.pinned ? '<span class="wk pin">choisi</span>' : it.kind === 'catchup' ? '<span class="wk catch">rattrapage</span>' : it.kind === 'deadline' ? '<span class="wk dead">échéance</span>' : it.kind === 'seminar' ? '<span class="wk sem">en classe</span>' : '';
-        h += '<div class="wtask' + (stOf(a.id).s === 'done' ? ' done' : '') + '" style="' + vars(s) + '" data-a="open" data-id="' + esc(a.id) + '" role="button"><i></i><span><b>' + esc(s.short) + '</b> ' + esc(a.title.length > 58 ? a.title.slice(0, 56) + '…' : a.title) + ' <span style="color:var(--ink-3)">· ' + hm(it.mins) + '</span> ' + tag + '</span>' +
-          (it.inClass ? '' : '<button class="w-del" data-a="remove" data-id="' + esc(a.id) + '" aria-label="Supprimer cette tâche" title="Supprimer">×</button>') + '</div>';
+        h += '<div class="wtask' + (stOf(a.id).s === 'done' ? ' done' : '') + '" style="' + vars(s) + '" data-a="open" data-id="' + esc(a.id) + '" role="button"><span class="w-body"><span class="t-subj">' + esc(s.short) + '</span><span class="w-title">' + esc(a.title.length > 70 ? a.title.slice(0, 68) + '…' : a.title) + '</span><span class="w-meta">' + hm(it.mins) + ' ' + tag + '</span></span>' +
+          (it.inClass ? '' : '<button class="w-del" data-a="remove" data-id="' + esc(a.id) + '" aria-label="Supprimer cette tâche" title="Supprimer">' + XMARK + '</button>') + '</div>';
       });
       (d.extras || []).forEach(function (x) {
         var s = subj(x.subject || '');
-        h += '<div class="wtask' + (x.done ? ' done' : '') + '" style="' + vars(s) + '" data-a="extra-toggle" data-id="' + esc(x.id) + '" role="button"><i></i><span>' + esc(x.title) + ' <span style="color:var(--ink-3)">· ' + hm(x.mins) + '</span> <span class="wk mine">à moi</span></span>' +
-          '<button class="w-del" data-a="extra-del" data-id="' + esc(x.id) + '" aria-label="Supprimer cette tâche" title="Supprimer">×</button></div>';
+        h += '<div class="wtask' + (x.done ? ' done' : '') + '" style="' + vars(s) + '" data-a="extra-toggle" data-id="' + esc(x.id) + '" role="button"><span class="w-body">' + (x.subject ? '<span class="t-subj">' + esc(s.short) + '</span>' : '') + '<span class="w-title">' + esc(x.title) + '</span><span class="w-meta">' + hm(x.mins) + ' <span class="wk mine">à moi</span></span></span>' +
+          '<button class="w-del" data-a="extra-del" data-id="' + esc(x.id) + '" aria-label="Supprimer cette tâche" title="Supprimer">' + XMARK + '</button></div>';
       });
-      d.seminars.forEach(function (sm) { h += '<div class="wtask cls" style="' + vars(subj(sm.subject)) + '"><i></i><span>' + (sm.kind === 'seminar' ? 'Séminaire ' : sm.kind === 'workshop' ? 'Atelier ' : 'Follow-up ') + esc(subj(sm.subject).short) + (sm.start ? ' <span style="color:var(--ink-3)">· ' + esc(sm.start) + '</span>' : '') + '</span></div>'; });
+      d.seminars.forEach(function (sm) { h += '<div class="wtask cls" style="' + vars(subj(sm.subject)) + '"><span class="w-body"><span class="t-subj">' + esc(subj(sm.subject).short) + '</span><span class="w-title">' + (sm.kind === 'seminar' ? 'Séminaire' : sm.kind === 'workshop' ? 'Atelier' : 'Follow-up session') + '</span>' + (sm.start ? '<span class="w-meta">' + esc(sm.start) + (sm.end ? ' – ' + esc(sm.end) : '') + '</span>' : '') + '</span></div>'; });
       h += '<div class="w-foot"><span>' + d.routines.filter(function (r) { return r.kind !== 'class'; }).length + ' routines · ' + hm(d.routineMins) + '</span><button class="add-day" data-a="day-add" data-date="' + d.date + '">+ Ajouter</button></div></div>';
     });
     h += '</div>';

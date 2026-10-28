@@ -97,10 +97,10 @@
   // 9. Routines quotidiennes visibles
   var allDaysHaveRoutines = plan.days.every(function (d) {
     var ids = d.routines.map(function (r) { return r.id; });
-    return ids.indexOf('zh-vocab') !== -1 && ids.indexOf('ir-book') !== -1 && ids.indexOf('zh-practice') !== -1 &&
+    return ids.indexOf('ir-book') !== -1 && ids.indexOf('zh-practice') !== -1 &&
       (ids.indexOf('math-practice') !== -1 || ids.indexOf('math-practice-thu') !== -1);
   });
-  ok(allDaysHaveRoutines, '9. Maths, mandarin, vocabulaire et livre d’IR présents chaque jour');
+  ok(allDaysHaveRoutines, '9. Maths, mandarin et livre d’IR présents chaque jour');
 
   // 10. Cocher une tâche met à jour toutes les vues
   var firstId = plan.days[0].items[0].id;
