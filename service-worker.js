@@ -1,7 +1,7 @@
 // Bump this version string whenever index.html changes meaningfully — it's
 // what forces installed devices to fetch the new version instead of
 // serving a stale cached copy forever.
-const CACHE_NAME = 'plan-the-day-v9';
+const CACHE_NAME = 'plan-the-day-v10';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -34,8 +34,13 @@ self.addEventListener('activate', (event) => {
 // how many times the app itself was updated and redeployed.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // Same-origin files are revalidated with the server on every load ('no-cache'), so the
+  // browser's HTTP cache (GitHub Pages: max-age=600) can't serve a 10-minute-old page
+  // right after a deploy.
+  const sameOrigin = new URL(event.request.url).origin === self.location.origin;
+  const request = sameOrigin ? fetch(event.request.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(event.request);
   event.respondWith(
-    fetch(event.request).then((networkResponse) => {
+    request.then((networkResponse) => {
       if (networkResponse && networkResponse.status === 200) {
         const copy = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
