@@ -7,7 +7,7 @@
   var plan, today, state, settings;
 
   var TYPE = {
-    understand: 'Comprendre', video: 'Vidéo', write: 'Écrire le cours', read: 'Lire le cours', aiquiz: 'Quiz IA',
+    understand: 'Comprendre', video: 'Vidéo', write: 'Écrire le cours', read: 'Lire le cours', chat: 'Discussion avec ChatGPT', film: 'Vidéo pour les parents', aiquiz: 'Quiz IA',
     notebooklm: 'NotebookLM', fiches: 'Fiches', inclass: 'En classe', test: 'Test en ligne', practice: 'Exercices',
     reading: 'Manuel', prep: 'Prépa séminaire', project: 'Projet de groupe', revision: 'Révision', mine: 'Mon ajout'
   };
@@ -154,7 +154,7 @@
 
     day.seminars.forEach(function (sm) {
       var s = subj(sm.subject);
-      h += '<div class="soft-note" style="margin-top:10px;"><b>' + (sm.kind === 'seminar' ? 'Séminaire' : sm.kind === 'workshop' ? 'Atelier' : 'Follow-up') + ' de ' + esc(s.short) + (sm.start ? ' · ' + esc(sm.start) : '') + '</b> : ' +
+      h += '<div class="soft-note" style="margin-top:10px;"><b>' + (sm.kind === 'seminar' ? 'Séminaire' : sm.kind === 'workshop' ? 'Atelier' : 'Séance de suivi') + ' de ' + esc(s.short) + (sm.start ? ' · ' + esc(sm.start) : '') + '</b> : ' +
         (sm.activity && act(sm.activity) ? 'exercices de la semaine ' + sm.week + '.' : '') + (sm.note ? ' ' + esc(sm.note) : '') + '</div>';
     });
     if (plan.conflicts.length) {
@@ -180,7 +180,7 @@
       var nx = E.nextInSequence(C, state, settings, mathR.adaptive, today, ['practice', 'reading', 'fiches']);
       if (nx) h += '<p class="garden-note">Pour ta pratique de maths, la suite logique : <b>' + esc(nx.title) + '</b> (S' + nx.week + '). <a href="#" class="btn-link" data-a="routine-link" data-r="' + mathR.id + '" data-id="' + esc(nx.id) + '">Fait, compte-le aussi</a></p>';
     }
-    h += '<p class="garden-note">Le livre d’IR du jour avance tes lectures « avant le cours » (Allison, Ambrose & Brinkley).</p>';
+    h += '<p class="garden-note">Le livre de RI du jour avance tes lectures « avant le cours » (Allison, Ambrose & Brinkley).</p>';
 
     if (doneIds.length) {
       h += '<div class="section-h"><h3>Déjà fait aujourd’hui</h3><span class="aside">' + doneIds.length + '</span></div>';
@@ -226,7 +226,7 @@
         h += '<div class="wtask' + (x.done ? ' done' : '') + '" style="' + vars(s) + '" data-a="extra-toggle" data-id="' + esc(x.id) + '" role="button"><span class="w-body">' + (x.subject ? '<span class="t-subj">' + esc(s.short) + '</span>' : '') + '<span class="w-title">' + esc(x.title) + '</span><span class="w-meta">' + hm(x.mins) + ' <span class="wk mine">à moi</span></span></span>' +
           '<button class="w-del" data-a="extra-del" data-id="' + esc(x.id) + '" aria-label="Supprimer cette tâche" title="Supprimer">' + XMARK + '</button></div>';
       });
-      d.seminars.forEach(function (sm) { h += '<div class="wtask cls" style="' + vars(subj(sm.subject)) + '"><span class="w-body"><span class="t-subj">' + esc(subj(sm.subject).short) + '</span><span class="w-title">' + (sm.kind === 'seminar' ? 'Séminaire' : sm.kind === 'workshop' ? 'Atelier' : 'Follow-up session') + '</span>' + (sm.start ? '<span class="w-meta">' + esc(sm.start) + (sm.end ? ' – ' + esc(sm.end) : '') + '</span>' : '') + '</span></div>'; });
+      d.seminars.forEach(function (sm) { h += '<div class="wtask cls" style="' + vars(subj(sm.subject)) + '"><span class="w-body"><span class="t-subj">' + esc(subj(sm.subject).short) + '</span><span class="w-title">' + (sm.kind === 'seminar' ? 'Séminaire' : sm.kind === 'workshop' ? 'Atelier' : 'Séance de suivi') + '</span>' + (sm.start ? '<span class="w-meta">' + esc(sm.start) + (sm.end ? ' – ' + esc(sm.end) : '') + '</span>' : '') + '</span></div>'; });
       h += '<div class="w-foot"><span>' + d.routines.filter(function (r) { return r.kind !== 'class'; }).length + ' routines · ' + hm(d.routineMins) + '</span><button class="add-day" data-a="day-add" data-date="' + d.date + '">+ Ajouter</button></div></div>';
     });
     h += '</div>';
@@ -257,7 +257,7 @@
       var s = subj(e.x.subject);
       h += '<div class="form-row"><label><b>' + esc(s.short) + '</b> · ' + esc(e.x.title) + '<small>' + E.niceDay(e.date, today) + (e.x.time ? ' · ' + e.x.time.replace(':', ' h ') : '') + ' · ' + e.x.weight + ' %</small></label><span class="pill k-deadline">J-' + E.diffDays(today, e.date) + '</span></div>';
     });
-    if (undated.length) h += '<p class="soft-note">' + undated.length + ' évaluations n’ont pas encore de date (midterms, présentations). <a href="#" class="btn-link" data-a="go" data-view="settings">Ajoute-les dans Réglages</a> quand tu les connais : je prévoirai des révisions juste avant.</p>';
+    if (undated.length) h += '<p class="soft-note">' + undated.length + ' évaluations n’ont pas encore de date (partiels, présentations). <a href="#" class="btn-link" data-a="go" data-view="settings">Ajoute-les dans Réglages</a> quand tu les connais : je prévoirai des révisions juste avant.</p>';
     return h + '</div>';
   }
 
@@ -403,7 +403,7 @@
     var w = E.wallet(C, state, settings);
     var pr = E.progress(C, state, settings, today);
     var subs = C.subjects.filter(function (s) { return !s.noSyllabus; });
-    var h = '<h2 class="title">Ma tirelire</h2><div class="subtitle">Chaque étape cochée te rapporte quelques dollars : 5 $ pour une petite tâche, jusqu’à 10 $ pour une grosse. Objectif : « Magnat de la finance » (6 000 $) d’ici la fin du semestre.</div>';
+    var h = '<h2 class="title">Ma tirelire</h2><div class="subtitle">Chaque étape cochée te rapporte quelques dollars : 5 $ pour une petite tâche, jusqu’à 10 $ pour une grosse. Objectif : « Magnat de la finance » (7 300 $) d’ici les examens de décembre.</div>';
     h += '<div class="card bank">' + ART.piggyBank(160) + '<div><div class="amount">' + money(w.total) + '</div><div class="lvl">Niveau ' + (w.level + 1) + ' · ' + esc(w.levelName) + '</div>' +
       (w.next ? '<div class="coins-bar"><i style="width:' + w.toNext + '%"></i></div><div style="font-size:12.5px;color:var(--ink-2);">Encore <b>' + money(w.next.at - w.total) + '</b> pour devenir « ' + esc(w.next.name) + ' »</div>' : '<div style="margin-top:8px;">Tu as tout débloqué ✿</div>') +
       '<div class="earn" style="margin-top:12px;"><div><span>Étapes de cours (5 $ jusqu’à 20 min, 7 $ jusqu’à 40 min, 10 $ au-delà)</span><b>' + money(w.work) + '</b></div>' +
@@ -464,18 +464,18 @@
     });
     h += '<div class="form-row"><label>Part max du rattrapage<small>les jours où il y a aussi des cours à préparer</small></label><input type="range" min="30" max="90" step="10" value="' + Math.round(settings.catchupShare * 100) + '" data-set="share" style="width:120px;"> <span class="load-txt">' + Math.round(settings.catchupShare * 100) + ' %</span></div></div>';
 
-    h += '<div class="section-h"><h3>Emploi du temps</h3></div><div class="card"><p class="soft-note">Repris de ton calendrier ESCP. Les exercices « en classe » de ta méthode sont placés tout seuls sur tes <b>séminaires</b>, <b>follow-up sessions</b> et <b>ateliers</b>. Corrige ici si un cours change.</p>';
+    h += '<div class="section-h"><h3>Emploi du temps</h3></div><div class="card"><p class="soft-note">Repris de ton calendrier ESCP. Les exercices « en classe » de ta méthode sont placés tout seuls sur tes <b>séminaires</b>, <b>séances de suivi</b> et <b>ateliers</b>. Corrige ici si un cours change.</p>';
     (settings.timetable || []).forEach(function (t, i) {
       h += '<div class="tt-row"><select class="inp" data-set="tt" data-i="' + i + '" data-f="subject">' + C.subjects.map(function (s) { return '<option value="' + s.id + '"' + (s.id === t.subject ? ' selected' : '') + '>' + esc(s.short) + '</option>'; }).join('') + '</select>' +
-        '<select class="inp" data-set="tt" data-i="' + i + '" data-f="kind">' + [['followup', 'Follow-up session'], ['seminar', 'Séminaire'], ['workshop', 'Atelier'], ['language', 'Cours de langue']].map(function (k) { return '<option value="' + k[0] + '"' + (k[0] === t.kind ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select>' +
+        '<select class="inp" data-set="tt" data-i="' + i + '" data-f="kind">' + [['followup', 'Séance de suivi'], ['seminar', 'Séminaire'], ['workshop', 'Atelier'], ['language', 'Cours de langue']].map(function (k) { return '<option value="' + k[0] + '"' + (k[0] === t.kind ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select>' +
         '<select class="inp" data-set="tt" data-i="' + i + '" data-f="day">' + WEEK_ORDER.map(function (d) { return '<option value="' + d + '"' + (d === t.day ? ' selected' : '') + '>' + DAYS[d] + '</option>'; }).join('') + '</select>' +
         '<input class="inp" type="time" value="' + esc(t.start) + '" data-set="tt" data-i="' + i + '" data-f="start"><input class="inp" type="time" value="' + esc(t.end) + '" data-set="tt" data-i="' + i + '" data-f="end">' +
         '<button class="btn soft small" data-a="tt-del" data-i="' + i + '">Retirer</button></div>';
     });
-    h += '<div class="row-actions"><button class="btn soft small" data-a="tt-add" data-k="seminar">+ Séminaire</button><button class="btn soft small" data-a="tt-add" data-k="followup">+ Follow-up</button><button class="btn soft small" data-a="tt-add" data-k="workshop">+ Atelier</button></div></div>';
+    h += '<div class="row-actions"><button class="btn soft small" data-a="tt-add" data-k="seminar">+ Séminaire</button><button class="btn soft small" data-a="tt-add" data-k="followup">+ Séance de suivi</button><button class="btn soft small" data-a="tt-add" data-k="workshop">+ Atelier</button></div></div>';
     h += '</div><div>';
 
-    h += '<div class="section-h"><h3>Dates d’évaluations</h3></div><div class="card"><p class="soft-note">Les finals viennent du calendrier « Fall final exams B1 ». Pour chaque date, je planifie des révisions juste avant (3 pour un midterm, 4 pour un final).</p>';
+    h += '<div class="section-h"><h3>Dates d’évaluations</h3></div><div class="card"><p class="soft-note">Les examens finaux viennent du calendrier officiel des examens de fin de semestre (B1). Pour chaque date, je planifie des révisions juste avant (3 pour un partiel, 4 pour un examen final).</p>';
     C.assessments.forEach(function (x) {
       h += '<div class="form-row"><label><b>' + esc(subj(x.subject).short) + '</b> · ' + esc(x.title) + '<small>' + x.weight + ' % · ' + esc(x.when) + '</small></label>' + (x.past ? '<span class="pill">passé</span>' : '<input class="inp" type="date" value="' + (E.examDate(settings, x) || '') + '" data-set="exam" data-id="' + x.id + '">') + '</div>';
     });

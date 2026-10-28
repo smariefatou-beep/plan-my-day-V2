@@ -163,14 +163,14 @@
   var irCh12 = acts.filter(function (a) { return a.id === 'IR11-best-ch12'; });
   ok(irCh12.length === 1 && irCh12[0].week === 4, '15b. Best ch. 12 (cité en S4, S5, S6, S10) = une seule lecture, renvoyée depuis les autres semaines');
 
-  // 16. Ta méthode en 11 étapes est présente pour chaque cours
+  // 16. Ta méthode en 12 étapes est présente pour chaque cours
   var stepsEC = acts.filter(function (a) { return a.subject === 'EC11' && a.week === 3 && a.step; }).map(function (a) { return a.step; });
   var stepsIR = acts.filter(function (a) { return a.subject === 'IR11' && a.week === 5 && a.step; }).map(function (a) { return a.step; });
-  ok([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].every(function (n) { return stepsEC.indexOf(n) !== -1; }) &&
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 11].every(function (n) { return stepsIR.indexOf(n) !== -1; }) && stepsIR.indexOf(10) === -1,
-    '16. Micro S3 : les 11 étapes · IR S5 : 10 étapes (pas de weekly test dans son syllabus)');
-  var chain = ['understand', 'video', 'write', 'read', 'aiquiz', 'nlm', 'fiches'].map(function (k) { return byId['EC11-w03-' + k]; });
-  ok(chain.every(function (a, i) { return i === 0 || (a.prereq || []).indexOf(chain[i - 1].id) !== -1; }), '16b. Les étapes s’enchaînent dans ton ordre (comprendre → vidéo → écrire → lire → quiz → NotebookLM → fiches)');
+  ok([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].every(function (n) { return stepsEC.indexOf(n) !== -1; }) &&
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12].every(function (n) { return stepsIR.indexOf(n) !== -1; }) && stepsIR.indexOf(11) === -1,
+    '16. Micro S3 : les 12 étapes · IR S5 : 11 étapes (pas de weekly test dans son syllabus)');
+  var chain = ['understand', 'video', 'write', 'read', 'chat', 'aiquiz', 'nlm', 'fiches'].map(function (k) { return byId['EC11-w03-' + k]; });
+  ok(chain.every(function (a, i) { return i === 0 || (a.prereq || []).indexOf(chain[i - 1].id) !== -1; }), '16b. Les étapes s’enchaînent dans ton ordre (comprendre → vidéo → écrire → lire → discussion avec Chat → quiz → NotebookLM → fiches)');
 
   // 17. Choisir le jour d'une tâche + ajouter une tâche à soi
   var stPin = E.setStatus(empty, 'x', 'todo');
@@ -207,6 +207,7 @@
 
   // 21. Récompense à chaque niveau
   var rich = JSON.parse(JSON.stringify(st)); rich.rewards = { seen: 0, taken: {}, custom: {} };
+  ec.forEach(function (a) { if (a.week != null && a.week <= 6) rich = E.setStatus(rich, a.id, 'done'); });
   var wr = E.wallet(CUR, rich, settings), nr = E.newRewards(rich, wr);
   rich.rewards.seen = wr.level;
   ok(wr.level >= 1 && nr.length === wr.level && nr[0].budget > 0 && E.newRewards(rich, wr).length === 0,

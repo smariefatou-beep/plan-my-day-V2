@@ -352,7 +352,7 @@
 
     // 1) Séances en classe (follow-up, séminaire, atelier) : les exercices se font sur place,
     //    le jour indiqué dans ton emploi du temps (temps de cours, pas d'étude en plus).
-    var SESSION = { followup: 'follow-up session', seminar: 'séminaire', workshop: 'atelier' };
+    var SESSION = { followup: 'séance de suivi', seminar: 'séminaire', workshop: 'atelier' };
     days.forEach(function (day) {
       (settings.timetable || []).forEach(function (t) {
         if (!SESSION[t.kind] || t.day !== day.weekday || day.inBreak || day.academicWeek == null) return;
@@ -560,16 +560,16 @@
   // [seuil, nom, récompense à t'offrir en vrai, budget en euros]
   var LEVELS = [
     [0, 'Tirelire vide', '', 0],
-    [30, 'Argent de poche', 'Un petit dessert ou ta boisson préférée', 5],
-    [120, 'Premier salaire', 'Un goûter spécial : viennoiserie, bubble tea ou glace', 8],
-    [300, 'Épargnante', 'Un joli carnet, des stylos ou une bougie', 15],
-    [600, 'Investisseuse', 'Un livre ou un magazine que tu as envie de lire', 20],
-    [1000, 'Propriétaire', 'Un brunch ou une séance de cinéma', 25],
-    [1500, 'Entrepreneuse', 'Un accessoire ou un petit vêtement', 35],
-    [2200, 'Rentière', 'Un moment soin : manucure, masque, coiffeur', 45],
-    [3000, 'Presque millionnaire', 'Une sortie de ton choix avec une amie', 60],
-    [4200, 'Millionnaire', 'Le truc que tu veux depuis longtemps', 100],
-    [6000, 'Magnat de la finance', 'Ta grande récompense de fin de semestre', 150]
+    [250, 'Argent de poche', 'Un petit dessert ou ta boisson préférée', 5],
+    [600, 'Premier salaire', 'Un goûter spécial : viennoiserie, bubble tea ou glace', 8],
+    [1100, 'Épargnante', 'Un joli carnet, des stylos ou une bougie', 15],
+    [1700, 'Investisseuse', 'Un livre ou un magazine que tu as envie de lire', 20],
+    [2400, 'Propriétaire', 'Un brunch ou une séance de cinéma', 25],
+    [3200, 'Entrepreneuse', 'Un accessoire ou un petit vêtement', 35],
+    [4100, 'Rentière', 'Un moment soin : manucure, masque, coiffeur', 45],
+    [5100, 'Presque millionnaire', 'Une sortie de ton choix avec une amie', 60],
+    [6200, 'Millionnaire', 'Le truc que tu veux depuis longtemps', 100],
+    [7300, 'Magnat de la finance', 'Ta grande récompense de fin de semestre', 150]
   ];
   // Récompense d'un niveau, avec tes modifications éventuelles (state.rewards.custom).
   function levelReward(state, i) {
