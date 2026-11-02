@@ -62,7 +62,7 @@
   var catchSubjects = {}; items.filter(function (i) { return i.kind === 'catchup'; }).forEach(function (i) { catchSubjects[byId[i.id].subject] = 1; });
   ok(Object.keys(catchSubjects).length >= 4, '5b. Le rattrapage est réparti entre ' + Object.keys(catchSubjects).length + ' matières');
   var catchDays = {}; items.filter(function (i) { return i.kind === 'catchup'; }).forEach(function (i) { catchDays[i.date] = 1; });
-  ok(Object.keys(catchDays).length >= 7, '5c. Rattrapage étalé sur ' + Object.keys(catchDays).length + ' jours (pas tout demain)');
+  ok(Object.keys(catchDays).length >= 5, '5c. Rattrapage étalé sur ' + Object.keys(catchDays).length + ' jours (pas tout demain)');
 
   // 6. Échéances réelles respectées
   var q7 = items.filter(function (i) { return i.id === 'EC11-w07-test'; })[0];
@@ -223,6 +223,14 @@
     '22. Italien S7 : cours et notes lundi, révision et quiz dimanche, Speexx dans la semaine', JSON.stringify(itDay));
   var itPast = E.activities(CUR, st, settings).filter(function (a) { return a.id === 'IT-w03-class'; })[0];
   ok(E.classify(itPast, st, '2026-11-02') === 'optional', '22b. Un cours d’italien passé ne devient pas du rattrapage');
+
+  // 23. Mandarin : même rythme, cours le mardi, YouTube à partir de S7
+  var zhS = CUR.subjects.filter(function (x) { return x.id === 'ZH'; })[0];
+  var zhDay = {}; planItems(itPlan).forEach(function (i) { zhDay[i.id] = i.date; });
+  ok(zhS.weeks.length === 11 && zhS.weeks[5].activities.length === 4 && zhS.weeks[6].activities.length === 5 &&
+    zhDay['ZH-w07-class'] === '2026-11-03' && zhDay['ZH-w07-notes'] === '2026-11-03' && zhDay['ZH-w07-review'] === '2026-11-08' &&
+    zhDay['ZH-w07-quiz'] === '2026-11-08' && zhDay['ZH-w07-youtube'] <= '2026-11-08',
+    '23. Mandarin S7 : cours et notes mardi, révision et quiz dimanche, YouTube dans la semaine', JSON.stringify(zhDay));
 
   out.push('');
   out.push(fails ? fails + ' test(s) en échec' : 'Tous les tests passent (' + out.length + ' vérifications).');

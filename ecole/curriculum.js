@@ -304,24 +304,27 @@
     return weeks;
   }
 
-  // ================================================================ IT — Italien
-  // Pas de syllabus : le rythme vient de toi. Cours le lundi, notes le jour même, révision et quiz
-  // le dimanche, Speexx à partir de la semaine 7. `dayOffset` = jour fixe (0 = lundi, 6 = dimanche).
-  function buildIT() {
+  // ================================================================ Langues — italien et mandarin
+  // Pas de syllabus : le rythme vient de toi. Cours et notes le jour du cours, révision et quiz
+  // le dimanche, plus une tâche en plus à partir de la semaine 7.
+  // `dayOffset` = jour fixe (0 = lundi, 6 = dimanche).
+  function buildLanguage(code, label, classOffset, dayName, extra) {
     var weeks = [];
     for (var n = 1; n <= 11; n++) {
-      var p = wid('IT', n);
+      var p = wid(code, n);
       var list = [
-        A(p + '-class', 'inclass', 'Aller au cours d’italien', 0, { step: 1, session: 'language', inClass: true, attend: true, src: 'Ton rythme : cours le lundi' }),
-        A(p + '-notes', 'write', 'Faire le cours (les notes)', 30, { step: 2, dayOffset: 0, src: 'Ton rythme : le lundi' }),
+        A(p + '-class', 'inclass', 'Aller au cours ' + label, 0, { step: 1, session: 'language', inClass: true, attend: true, src: 'Ton rythme : cours le ' + dayName }),
+        A(p + '-notes', 'write', 'Faire le cours (les notes)', 30, { step: 2, dayOffset: classOffset, src: 'Ton rythme : le ' + dayName }),
         A(p + '-review', 'read', 'Réviser le cours', 30, { step: 3, dayOffset: 6, prereq: [p + '-notes'], src: 'Ton rythme : le dimanche' }),
         A(p + '-quiz', 'aiquiz', 'Faire le quiz', 15, { step: 4, dayOffset: 6, prereq: [p + '-review'], src: 'Ton rythme : le dimanche' })
       ];
-      if (n >= 7) list.push(A(p + '-speexx', 'practice', 'Faire 1 h de Speexx', 60, { step: 5, keepInWeek: true, src: 'Ton rythme : chaque semaine à partir de la semaine 7' }));
-      weeks.push({ n: n, title: 'Italien — semaine ' + n, topics: [], activities: list });
+      if (n >= 7) list.push(A(p + '-' + extra.id, extra.type, extra.title, extra.mins, { step: 5, keepInWeek: true, src: 'Ton rythme : chaque semaine à partir de la semaine 7' }));
+      weeks.push({ n: n, title: extra.name + ' — semaine ' + n, topics: [], activities: list });
     }
     return weeks;
   }
+  function buildIT() { return buildLanguage('IT', 'd’italien', 0, 'lundi', { name: 'Italien', id: 'speexx', type: 'practice', title: 'Faire 1 h de Speexx', mins: 60 }); }
+  function buildZH() { return buildLanguage('ZH', 'de mandarin', 1, 'mardi', { name: 'Mandarin', id: 'youtube', type: 'video', title: 'Faire une recherche YouTube', mins: 30 }); }
 
   // ================================================================ Matières
   // Couleurs reprises de tes dossiers ESCP B1. `prepOffset` = jour (après le lundi de la semaine)
@@ -347,13 +350,13 @@
       books: ['Cottrell — « The Study Skills Handbook » (5e éd.) : le manuel officiel du cours'],
       prepNote: 'Vidéos à faire le samedi, dès qu’elles sont disponibles.',
       finished: 'Examen final passé en octobre : ce qui reste devient facultatif, sans rattrapage.' },
-    { id: 'ZH', name: 'Chinois mandarin', short: 'Chinois', color: '#EFAE9C', soft: '#FBE2DA', ink: '#9E5A47', noSyllabus: true,
-      prepNote: 'Pas de syllabus fourni : suivi par tes routines (cours du mardi, pratique et vocabulaire quotidiens).' },
+    { id: 'ZH', name: 'Chinois mandarin', short: 'Chinois', color: '#EFAE9C', soft: '#FBE2DA', ink: '#9E5A47', prepOffset: 6, prepDays: [0, 2],
+      prepNote: 'Ton rythme chaque semaine : cours et notes le mardi, révision et quiz le dimanche. Recherche YouTube à partir de la semaine 7.' },
     { id: 'IT', name: 'Italien', short: 'Italien', color: '#A9CCE8', soft: '#E0EEF8', ink: '#4D7A9C', prepOffset: 6, prepDays: [0, 1],
       prepNote: 'Ton rythme chaque semaine : cours et notes le lundi, révision et quiz le dimanche. Speexx à partir de la semaine 7.' }
   ];
 
-  var BUILDERS = { EC11: buildEC11, MA11: buildMA11, IR11: buildIR11, MG11: buildMG11, SK11: buildSK11, LE11: buildLE11, IT: buildIT };
+  var BUILDERS = { EC11: buildEC11, MA11: buildMA11, IR11: buildIR11, MG11: buildMG11, SK11: buildSK11, LE11: buildLE11, IT: buildIT, ZH: buildZH };
   SUBJECTS.forEach(function (s) { s.weeks = BUILDERS[s.id] ? BUILDERS[s.id]() : []; });
 
   // ================================================================ Évaluations
@@ -387,8 +390,6 @@
     { id: 'zh-homework', title: 'Devoirs de mandarin', subject: 'ZH', mins: 30, days: [1] },
     { id: 'micro-review', title: 'Révision micro : cartes mémoire, notes ou un petit exercice', subject: 'EC11', mins: 20, days: [1] },
     { id: 'zh-prep-tue', title: 'Préparer le mandarin pour mardi (si besoin)', subject: 'ZH', mins: 15, days: [1], optional: true },
-    { id: 'zh-class', title: 'Cours de mandarin', subject: 'ZH', kind: 'class', mins: 0, days: [2] },
-    { id: 'zh-notes', title: 'Mettre au propre les notes de mandarin', subject: 'ZH', mins: 20, days: [2] },
     { id: 'check-new', title: 'Vérifier Blackboard / MyLab : nouveaux contenus et échéances', mins: 10, days: [3] },
     { id: 'mylab-check', title: 'Vérifier les devoirs MyLab de la semaine', subject: 'MA11', mins: 10, days: [6] },
     { id: 'biz-monday', title: 'Vérifier les devoirs de stratégie dus lundi matin', subject: 'MG11', mins: 15, days: [0] },
@@ -421,7 +422,7 @@
     assessments: ASSESSMENTS,
     routines: ROUTINES,
     // Anciennes routines remplacées : ce qu'elles ont déjà rapporté reste dans la tirelire.
-    retiredRoutines: { 'it-sheet': 30, 'it-review': 30 },
+    retiredRoutines: { 'it-sheet': 30, 'it-review': 30, 'zh-notes': 20 },
     timetable: TIMETABLE,
     timetableVersion: 2,
     timetableV1Ids: TIMETABLE_V1_IDS
