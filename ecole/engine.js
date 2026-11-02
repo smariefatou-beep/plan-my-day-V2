@@ -102,12 +102,15 @@
       if (a.dueOffset != null && ws) a.due = addDays(ws, a.dueOffset);
       if (o.due !== undefined) { a.due = o.due || null; a.dueSrc = o.due ? 'Date saisie par toi' : a.dueSrc; }
       if (a.due && a.target && a.target > a.due) a.target = a.due;
+      // Tâche à jour fixe : prévue ce jour-là, pas avant.
+      a.fixedDate = a.dayOffset != null && ws ? addDays(ws, a.dayOffset) : null;
+      if (a.fixedDate) a.target = a.fixedDate;
       // Mise à disposition : les manuels sont toujours disponibles ; vidéos, tests et devoirs
       // sont supposés publiés le lundi de leur semaine (la semaine d'avant pour un cours du lundi,
       // préparé le jeudi/dimanche précédent). Marque « bloqué » ce qui n'est pas encore en ligne.
       var online = a.type === 'video' || a.type === 'test' || a.inClass;
       a.release = o.release !== undefined ? o.release :
-        (online && ws && wk.n > 0 ? addDays(ws, subj.prepOffset === 0 ? -7 : 0) : null);
+        (a.fixedDate || (online && ws && wk.n > 0 ? addDays(ws, subj.prepOffset === 0 ? -7 : 0) : null));
       // Séance en classe (follow-up, séminaire, atelier) : son jour vient de ton emploi du temps.
       a.classDate = null;
       if (a.inClass && ws && wk.n > 0) {
@@ -174,6 +177,8 @@
     var s = statusOf(state, a.id);
     if (s === 'done') return 'done';
     if (a.removed) return 'removed';
+    // Un cours passé ne se rattrape pas : on peut seulement le cocher.
+    if (a.attend && a.target && a.target < today) return 'optional';
     // Exercices faits en classe : pas du temps d'étude à planifier, sauf s'ils sont passés (rattrapage).
     if (a.inClass && s !== 'blocked' && (!a.target || a.target >= today)) return 'inclass';
     if (s === 'blocked' || (a.blocked && s !== 'doing')) return 'blocked';
@@ -376,6 +381,26 @@
         }
         day.seminars.push(info);
       });
+    });
+
+    // 1b) Cours de langue et tâches à jour fixe : toujours le jour que tu as choisi.
+    days.forEach(function (day) {
+      acts.forEach(function (a) {
+        if (placedOn[a.id] || a.removed) return;
+        if (a.attend && a.classDate === day.date && cls[a.id] === 'inclass') {
+          put(a, day, 'seminar', 2, 'Ton cours de ' + subjOf(a).short + ' — semaine ' + a.week, { free: true });
+        } else if (a.fixedDate === day.date && isCandidate(a)) {
+          put(a, day, 'current', 2, 'Ton rendez-vous de ' + subjOf(a).short + ' du ' + WD[day.weekday] + ' · semaine ' + a.week);
+        }
+      });
+    });
+
+    // 1c) Tâche à faire dans sa semaine, sans jour imposé : le jour le moins chargé de cette semaine.
+    acts.filter(function (a) { return a.keepInWeek && !placedOn[a.id] && isCandidate(a) && a.target >= today; }).forEach(function (a) {
+      var win = windowDays(addDays(a.target, -6), a.target);
+      if (!win.length) return;
+      win.sort(function (x, y) { return x.load - y.load; });
+      put(a, win[0], 'current', 2, 'À faire cette semaine · ' + subjOf(a).short + ' semaine ' + a.week);
     });
 
     // 2) Échéances réelles dans l'horizon (tests, MyLab, révisions d'examen).
@@ -596,6 +621,7 @@
     });
     Object.keys(weeks).forEach(function (k) { if (weeks[k].all && weeks[k].any) bonus += WEEK_BONUS; });
     var rmins = {}; cur.routines.forEach(function (r) { rmins[r.id] = r.mins; });
+    Object.keys(cur.retiredRoutines || {}).forEach(function (id) { rmins[id] = cur.retiredRoutines[id]; });
     Object.keys(state.routineLog || {}).forEach(function (d) {
       Object.keys(state.routineLog[d]).forEach(function (rid) { if (rmins[rid] != null) routines += rewardMins(rmins[rid]); });
     });

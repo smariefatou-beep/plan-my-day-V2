@@ -21,8 +21,8 @@
   // Une plante par routine (jamais deux fois la même le même jour).
   var PLANT_OF = {
     'math-practice': 'sunflower', 'math-practice-thu': 'sunflower', 'zh-practice': 'peony', 'ir-book': 'lavender',
-    'it-sheet': 'lemon', 'zh-homework': 'daisy', 'micro-review': 'hydrangea', 'zh-prep-tue': 'muguet',
-    'check-new': 'cactus', 'mylab-check': 'bell', 'biz-monday': 'poppy', 'it-review': 'lemon',
+    'zh-homework': 'daisy', 'micro-review': 'hydrangea', 'zh-prep-tue': 'muguet',
+    'check-new': 'cactus', 'mylab-check': 'bell', 'biz-monday': 'poppy',
     'zh-prep-sun': 'muguet', 'week-review': 'daisy'
   };
   function plantOf(r, i) { var k = Object.keys(ART.PLANTS); return PLANT_OF[r.id] || k[i % k.length]; }
@@ -75,7 +75,7 @@
     opts = opts || {};
     var s = subj(a.subject), st = stOf(a.id), out = [];
     out.push('<span class="pill">' + (TYPE[a.type] || a.type) + '</span>');
-    out.push('<span class="pill">' + hm(st.s === 'done' ? a.mins : E.remainingMins(a, state)) + (st.s === 'doing' ? ' restantes' : '') + '</span>');
+    if (a.mins) out.push('<span class="pill">' + hm(st.s === 'done' ? a.mins : E.remainingMins(a, state)) + (st.s === 'doing' ? ' restantes' : '') + '</span>');
     if (it) out.push('<span class="pill k-' + it.kind + '">' + (it.pinned ? 'Choisi par toi' : KIND[it.kind]) + '</span>');
     if (a.due && st.s !== 'done') out.push('<span class="pill k-deadline">' + (a.due < today ? 'échéance passée' : 'avant ' + E.niceDay(a.due, today)) + '</span>');
     if (st.s === 'doing') out.push('<span class="pill">en cours · ' + (st.p || 0) + ' %</span>');
@@ -218,7 +218,7 @@
         var a = act(it.id); if (!a) return;
         var s = subj(a.subject);
         var tag = it.pinned ? '<span class="wk pin">choisi</span>' : it.kind === 'catchup' ? '<span class="wk catch">rattrapage</span>' : it.kind === 'deadline' ? '<span class="wk dead">échéance</span>' : it.kind === 'seminar' ? '<span class="wk sem">en classe</span>' : '';
-        h += '<div class="wtask' + (stOf(a.id).s === 'done' ? ' done' : '') + '" style="' + vars(s) + '" data-a="open" data-id="' + esc(a.id) + '" role="button"><span class="w-body"><span class="t-subj">' + esc(s.short) + '</span><span class="w-title">' + esc(a.title.length > 70 ? a.title.slice(0, 68) + '…' : a.title) + '</span><span class="w-meta">' + hm(it.mins) + ' ' + tag + '</span></span>' +
+        h += '<div class="wtask' + (stOf(a.id).s === 'done' ? ' done' : '') + '" style="' + vars(s) + '" data-a="open" data-id="' + esc(a.id) + '" role="button"><span class="w-body"><span class="t-subj">' + esc(s.short) + '</span><span class="w-title">' + esc(a.title.length > 70 ? a.title.slice(0, 68) + '…' : a.title) + '</span><span class="w-meta">' + (it.mins ? hm(it.mins) + ' ' : '') + tag + '</span></span>' +
           (it.inClass ? '' : '<button class="w-del" data-a="remove" data-id="' + esc(a.id) + '" aria-label="Supprimer cette tâche" title="Supprimer">' + XMARK + '</button>') + '</div>';
       });
       (d.extras || []).forEach(function (x) {
@@ -317,7 +317,7 @@
     var h = '<section class="village-head" style="' + vars(s) + '">' +
       '<div class="vh-txt"><button class="chip-btn" data-a="subject" data-id="">' + ART.icon('back', null, 14) + ' La carte</button>' +
       '<div class="vh-name">' + ART.symbol(s.id, s.color, 34) + '<h2>Le village ' + (/^[AEIOUÉ]/.test(s.short) ? 'd’' : 'de ') + esc(s.short) + '</h2></div>' +
-      '<div class="code">' + (s.noSyllabus ? esc(s.name) : s.id + ' · ' + esc(s.name) + ' · ' + s.ects + ' ECTS') + '</div>';
+      '<div class="code">' + (s.ects ? s.id + ' · ' + esc(s.name) + ' · ' + s.ects + ' ECTS' : esc(s.name)) + '</div>';
     if (!s.noSyllabus) {
       h += '<div class="sh-stats"><div class="sh-stat"><b>' + pr.pct + ' %</b>du travail fait</div>' +
         '<div class="sh-stat"><b>' + (s.finished ? '—' : (state.assessed || {})[s.id] ? (pr.behind ? hm(pr.behindMins) : '0') : '—') + '</b>à rattraper</div>' +

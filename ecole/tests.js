@@ -213,6 +213,17 @@
   ok(wr.level >= 1 && nr.length === wr.level && nr[0].budget > 0 && E.newRewards(rich, wr).length === 0,
     '21. Niveau ' + wr.level + ' atteint → récompense « ' + (nr[0] ? nr[0].text : '?') + ' » proposée une seule fois');
 
+  // 22. Italien : des semaines, avec des jours fixes
+  var itS = CUR.subjects.filter(function (x) { return x.id === 'IT'; })[0];
+  var itSt = { S1: itS.weeks[0].activities.length, S7: itS.weeks[6].activities.length };
+  var itPlan = E.buildPlan(CUR, E.emptyState(), settings, '2026-11-02', null);
+  var itDay = {}; planItems(itPlan).forEach(function (i) { itDay[i.id] = i.date; });
+  ok(itS.weeks.length === 11 && itSt.S1 === 4 && itSt.S7 === 5 && itDay['IT-w07-class'] === '2026-11-02' && itDay['IT-w07-notes'] === '2026-11-02' &&
+    itDay['IT-w07-review'] === '2026-11-08' && itDay['IT-w07-quiz'] === '2026-11-08' && itDay['IT-w07-speexx'] <= '2026-11-08',
+    '22. Italien S7 : cours et notes lundi, révision et quiz dimanche, Speexx dans la semaine', JSON.stringify(itDay));
+  var itPast = E.activities(CUR, st, settings).filter(function (a) { return a.id === 'IT-w03-class'; })[0];
+  ok(E.classify(itPast, st, '2026-11-02') === 'optional', '22b. Un cours d’italien passé ne devient pas du rattrapage');
+
   out.push('');
   out.push(fails ? fails + ' test(s) en échec' : 'Tous les tests passent (' + out.length + ' vérifications).');
   root.SCHOOL_TEST_RESULTS = { lines: out, fails: fails, plan: plan };
