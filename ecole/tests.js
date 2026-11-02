@@ -232,6 +232,18 @@
     zhDay['ZH-w07-quiz'] === '2026-11-08' && zhDay['ZH-w07-youtube'] <= '2026-11-08',
     '23. Mandarin S7 : cours et notes mardi, révision et quiz dimanche, YouTube dans la semaine', JSON.stringify(zhDay));
 
+  // 24. Tirelire : italien et mandarin comptent à partir de S7, et le choix par tâche prime
+  var payS = E.emptyState();
+  ['IT-w06-notes', 'IT-w06-class', 'IT-w06-review', 'IT-w06-quiz', 'ZH-w03-notes'].forEach(function (id) { payS = E.setStatus(payS, id, 'done'); });
+  ok(E.wallet(CUR, payS, settings).total === 0, '24. Italien et mandarin S1 à S6 : rien dans la tirelire, même une semaine complète');
+  payS = E.setStatus(payS, 'IT-w07-class', 'done');
+  ok(E.wallet(CUR, payS, settings).total === 5, '24b. Italien S7 : le cours rapporte bien 5 $', E.wallet(CUR, payS, settings).total);
+  payS.overrides = { 'IT-w06-notes': { pay: true }, 'EC11-w01-understand': { pay: false, title: 'Mon nom à moi' } };
+  payS = E.setStatus(payS, 'EC11-w01-understand', 'done');
+  var payA = E.activities(CUR, payS, settings).filter(function (a) { return a.id === 'EC11-w01-understand'; })[0];
+  ok(E.wallet(CUR, payS, settings).total === 12 && payA.title === 'Mon nom à moi', '24c. Le choix par tâche et le nouveau nom sont respectés', E.wallet(CUR, payS, settings).total);
+  ok(E.weekIsPast(CUR, 6, '2026-11-02') && !E.weekIsPast(CUR, 7, '2026-11-02') && E.weekIsPast(CUR, 7, '2026-11-09'), '24d. Le choix n’existe que pour les semaines terminées');
+
   out.push('');
   out.push(fails ? fails + ' test(s) en échec' : 'Tous les tests passent (' + out.length + ' vérifications).');
   root.SCHOOL_TEST_RESULTS = { lines: out, fails: fails, plan: plan };

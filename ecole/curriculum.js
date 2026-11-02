@@ -350,9 +350,9 @@
       books: ['Cottrell — « The Study Skills Handbook » (5e éd.) : le manuel officiel du cours'],
       prepNote: 'Vidéos à faire le samedi, dès qu’elles sont disponibles.',
       finished: 'Examen final passé en octobre : ce qui reste devient facultatif, sans rattrapage.' },
-    { id: 'ZH', name: 'Chinois mandarin', short: 'Chinois', color: '#EFAE9C', soft: '#FBE2DA', ink: '#9E5A47', prepOffset: 6, prepDays: [0, 2],
+    { id: 'ZH', name: 'Chinois mandarin', short: 'Chinois', color: '#EFAE9C', soft: '#FBE2DA', ink: '#9E5A47', payFromWeek: 7, prepOffset: 6, prepDays: [0, 2],
       prepNote: 'Ton rythme chaque semaine : cours et notes le mardi, révision et quiz le dimanche. Recherche YouTube à partir de la semaine 7.' },
-    { id: 'IT', name: 'Italien', short: 'Italien', color: '#A9CCE8', soft: '#E0EEF8', ink: '#4D7A9C', prepOffset: 6, prepDays: [0, 1],
+    { id: 'IT', name: 'Italien', short: 'Italien', color: '#A9CCE8', soft: '#E0EEF8', ink: '#4D7A9C', payFromWeek: 7, prepOffset: 6, prepDays: [0, 1],
       prepNote: 'Ton rythme chaque semaine : cours et notes le lundi, révision et quiz le dimanche. Speexx à partir de la semaine 7.' }
   ];
 

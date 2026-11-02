@@ -32,6 +32,7 @@
   function subj(id) { return E.subjectById(C, id) || { id: id, short: 'Perso', color: '#B6D39A', soft: '#E5F0D8', ink: '#5B7C42' }; }
   function vars(s) { return '--c:' + s.color + ';--cs:' + s.soft + ';--ci:' + s.ink + ';'; }
   function hm(mins) { mins = Math.round(mins || 0); if (mins < 60) return mins + ' min'; var h = Math.floor(mins / 60), m = mins % 60; return h + ' h' + (m ? ' ' + (m < 10 ? '0' : '') + m : ''); }
+  function gain(a) { return E.reward(a) ? '+' + money(E.reward(a)) : 'sans gain'; }
   function money(n) { return Math.round(n).toLocaleString('fr-FR').replace(/ | /g, ' ') + ' $'; }
   var MONTHS_S = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   function shortDate(s) { var d = E.parseDay(s); return d.getDate() + ' ' + MONTHS_S[d.getMonth()]; }
@@ -94,10 +95,10 @@
       '<div class="t-ico">' + ART.icon(a.type === 'test' ? 'test' : a.type, s.color, 22) + '</div>' +
       '<div class="t-main">' + (opts.noSubject ? '' : '<span class="t-subj">' + esc(s.short) + (a.week > 0 && a.week < 12 ? ' · S' + a.week : '') + '</span>') +
       '<div class="t-title">' + esc(a.title) + '</div>' +
-      '<div class="t-meta">' + pills(a, it, opts) + '<span class="pill money mob">+' + money(E.reward(a)) + '</span></div>' +
+      '<div class="t-meta">' + pills(a, it, opts) + '<span class="pill money mob">' + gain(a) + '</span></div>' +
       (it && it.reason ? '<details class="why"><summary>Pourquoi ' + (opts.dayLabel || 'aujourd’hui') + ' ?</summary><p>' + esc(it.reason) + '</p></details>' : '') +
       (a.questions ? '<details class="why"><summary>Les 3 questions du séminaire</summary><p>' + a.questions.map(function (q, i) { return (i + 1) + '. ' + esc(q); }).join('<br>') + '</p></details>' : '') +
-      '</div><span class="reward">+' + money(E.reward(a)) + '</span><button class="more" data-a="open" data-id="' + esc(a.id) + '" aria-label="Détails">⋯</button></div>';
+      '</div><span class="reward">' + gain(a) + '</span><button class="more" data-a="open" data-id="' + esc(a.id) + '" aria-label="Détails">⋯</button></div>';
   }
   function extraRow(x, opts) {
     opts = opts || {};
@@ -508,15 +509,18 @@
     var a = act(id); if (!a) return;
     var s = subj(a.subject), st = stOf(id), pi = plannedItem(id), pinned = (state.pins || {})[id];
     var cur = st.s === 'todo' && a.blocked ? 'blocked' : st.s;
-    var h = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;' + vars(s) + '"><span class="pill subj">' + esc(s.short) + (a.week ? ' · S' + a.week : '') + '</span><span class="pill">' + (TYPE[a.type] || a.type) + '</span><span class="pill money">+' + money(E.reward(a)) + '</span></div>' +
+    var h = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;' + vars(s) + '"><span class="pill subj">' + esc(s.short) + (a.week ? ' · S' + a.week : '') + '</span><span class="pill">' + (TYPE[a.type] || a.type) + '</span><span class="pill money">' + gain(a) + '</span></div>' +
       '<h3>' + esc(a.title) + '</h3><div class="s-sub">' + esc(a.weekTitle || '') + '</div>';
     if (pi) h += '<div class="soft-note">Prévu <b>' + E.niceDay(pi.date, today) + '</b> : ' + esc(pi.item.reason) + '</div>';
+    h += '<div class="field"><label>Nom de la tâche</label><input class="inp" id="ftitle" value="' + esc(a.title) + '"><small>' + (a.originalTitle ? 'Nom d’origine : ' + esc(a.originalTitle) + '. Vide la case pour le retrouver.' : 'Tu peux la renommer comme tu veux.') + '</small></div>';
     h += '<div class="field"><label>Où j’en suis</label><div class="seg">' +
       [['todo', 'Pas commencé'], ['doing', 'En cours'], ['done', 'Fait'], ['blocked', 'Pas encore dispo']].map(function (o) { return '<button data-st="' + o[0] + '" class="' + (cur === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
       '<div class="field" id="pfield" style="' + (cur === 'doing' ? '' : 'display:none') + '"><label>Avancement : <span id="pval">' + (st.p || 0) + '</span> %</label><input type="range" min="0" max="95" step="5" value="' + (st.p || 0) + '" id="prange"></div>';
     if (!a.inClass || E.classify(a, state, today) !== 'inclass') {
       h += '<div class="field"><label>Le faire quel jour ?</label>' + dayChoices(pinned || null) + '<small>' + (pinned ? 'Tu l’as placé toi-même. <a href="#" class="btn-link" data-x="unpin">Laisser l’app choisir</a>' : 'Choisis un jour pour le placer toi-même ; sinon l’app choisit.') + '</small></div>';
     }
+    var canPay = a.week != null && E.weekIsPast(C, a.week, today);
+    if (canPay) h += '<div class="field"><label>Compter dans ma tirelire ?</label><div class="seg"><button data-pay="1" class="' + (a.paid !== false ? 'on' : '') + '">Oui, je gagne ' + money(E.rewardMins(a.mins)) + '</button><button data-pay="0" class="' + (a.paid === false ? 'on' : '') + '">Non, je ne gagne rien</button></div><small>Choisis « Non » pour ce que tu as fait dans le passé.</small></div>';
     h += '<div class="field"><label>Durée estimée (minutes)</label><input class="inp" type="number" min="5" step="5" id="fmins" value="' + a.mins + '"></div>' +
       '<div class="field"><label>Échéance réelle</label><input class="inp" type="date" id="fdue" value="' + (a.due || '') + '"><small>' + esc(a.due ? (a.dueSrc || '') : 'Aucune échéance dans le syllabus : n’en mets une que si le prof l’a donnée.') + '</small></div>';
     if (a.src) h += '<p style="font-size:12px;color:var(--ink-3);margin-top:12px;">Source : ' + esc(a.src) + '</p>';
@@ -524,7 +528,13 @@
       a.removed ? '<button class="btn soft" data-x="restore" style="margin-right:auto;">Remettre dans mon planning</button>' :
       '<button class="btn soft" data-x="remove" style="margin-right:auto;color:#B35A6E;">Supprimer de mon planning</button>') + '<button class="btn soft" data-x="close">Annuler</button><button class="btn" data-x="save">Enregistrer</button></div>';
     sheet(h, function (root) {
-      var chosen = cur, day = pinned || null, unpin = false;
+      var chosen = cur, day = pinned || null, unpin = false, paid = a.paid !== false;
+      root.querySelectorAll('[data-pay]').forEach(function (b) {
+        b.onclick = function () {
+          paid = b.dataset.pay === '1';
+          root.querySelectorAll('[data-pay]').forEach(function (x) { x.classList.toggle('on', x === b); });
+        };
+      });
       root.querySelectorAll('[data-st]').forEach(function (b) {
         b.onclick = function () {
           chosen = b.dataset.st;
@@ -543,14 +553,16 @@
       var del = root.querySelector('[data-x="del"]');
       if (del) del.onclick = function () { S.updateState(function (st) { st.custom = (st.custom || []).filter(function (c) { return c.id !== id; }); delete st.acts[id]; if (st.pins) delete st.pins[id]; }); closeSheet(); rerender(); toast('Activité supprimée'); };
       root.querySelector('[data-x="save"]').onclick = function () {
-        var mins = +root.querySelector('#fmins').value, due = root.querySelector('#fdue').value || null;
+        var mins = +root.querySelector('#fmins').value, due = root.querySelector('#fdue').value || null, title = root.querySelector('#ftitle').value.trim();
         S.updateState(function (st) {
           st.overrides = st.overrides || {};
           var o = st.overrides[id] || {};
           if (mins && mins !== a.mins) o.mins = mins;
           if ((due || null) !== (a.due || null)) o.due = due;
-          if (Object.keys(o).length) st.overrides[id] = o;
-          if (a.custom) (st.custom || []).forEach(function (c) { if (c.id === id) { c.mins = mins || c.mins; c.due = due; c.dueSrc = due ? 'Ajoutée par toi' : null; } });
+          if (canPay && paid !== (a.paid !== false)) o.pay = paid;
+          if (!a.custom) { if (!title || title === a.originalTitle) delete o.title; else if (title !== a.title) o.title = title; }
+          if (Object.keys(o).length) st.overrides[id] = o; else delete st.overrides[id];
+          if (a.custom) (st.custom || []).forEach(function (c) { if (c.id === id) { c.mins = mins || c.mins; c.title = title || c.title; c.due = due; c.dueSrc = due ? 'Ajoutée par toi' : null; } });
           st.pins = st.pins || {};
           if (day) st.pins[id] = day; else if (unpin) delete st.pins[id];
         });
@@ -622,7 +634,7 @@
     var row = document.getElementById('t-' + a.id);
     if (row) { row.classList.add('highlight'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     var h = '<div class="timer"><div class="s-sub" style="margin:0;">Ta prochaine étape</div><div class="s-title">' + esc(a.title) + '</div>' +
-      '<div class="s-sub">' + esc(s.short) + (a.week ? ' · semaine ' + a.week : '') + ' · ' + hm(it.mins) + ' · +' + money(E.reward(a)) + '</div>' +
+      '<div class="s-sub">' + esc(s.short) + (a.week ? ' · semaine ' + a.week : '') + ' · ' + hm(it.mins) + ' · ' + gain(a) + '</div>' +
       '<div class="t-big" id="tclock">5:00</div><p>Juste 5 minutes pour démarrer. Après, tu continues si ça roule, ou tu t’arrêtes : c’est déjà gagné.</p>' +
       '<div class="sheet-actions" style="justify-content:center;"><button class="btn soft" data-x="close">Plus tard</button><button class="btn soft" data-x="go">C’est parti</button><button class="btn" data-x="done">J’ai fini</button></div></div>';
     sheet(h, function (root) {
@@ -637,7 +649,7 @@
         }, 1000);
         else { clearInterval(timer.int); timer.int = null; }
       };
-      root.querySelector('[data-x="done"]').onclick = function () { closeSheet(); S.setActivity(a.id, 'done'); rerender(); toast('Bravo ! +' + money(E.reward(a)) + ' dans ta tirelire'); };
+      root.querySelector('[data-x="done"]').onclick = function () { closeSheet(); S.setActivity(a.id, 'done'); rerender(); toast(E.reward(a) ? 'Bravo ! +' + money(E.reward(a)) + ' dans ta tirelire' : 'Bravo ! C’est fait'); };
     });
   }
 
@@ -753,7 +765,7 @@
         if (cur === 'done') S.setActivity(id, 'todo');
         else { S.setActivity(id, 'done'); petals(t); }
         setTimeout(rerender, cur === 'done' ? 0 : 300);
-        if (cur !== 'done' && x) toast('+' + money(E.reward(x)) + ' dans ta tirelire');
+        if (cur !== 'done' && x && E.reward(x)) toast('+' + money(E.reward(x)) + ' dans ta tirelire');
         break;
       }
       case 'open': openActivity(id); break;

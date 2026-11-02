@@ -94,6 +94,9 @@
       a.weekTitle = wk.title;
       a.seq = seq++;
       if (o.mins != null) a.mins = o.mins;
+      if (o.title) { a.originalTitle = a.title; a.title = o.title; }
+      // Tirelire : `paid` = la tâche rapporte-t-elle ? Ton choix prime sur la règle de la matière.
+      a.paid = o.pay !== undefined ? o.pay : !(subj.payFromWeek && wk.n < subj.payFromWeek);
       // Retirée par toi (« je ne la fais pas ») : gardée dans la liste, jamais planifiée.
       if ((state.removed || {})[a.id]) a.removed = true;
       // Matière dont l'examen final est passé : ce qui reste devient facultatif.
@@ -612,12 +615,13 @@
     var acts = activities(cur, state, settings);
     var work = 0, routines = 0, extras = 0, bonus = 0, weeks = {};
     acts.forEach(function (a) {
-      var part = a.mins ? (a.mins - remainingMins(a, state)) / a.mins : 0;
+      var part = a.mins ? (a.mins - remainingMins(a, state)) / a.mins : (statusOf(state, a.id) === 'done' ? 1 : 0);
       work += Math.round(part * reward(a));
       if (a.week == null || a.optional || a.viaRoutine || a.removed) return;
       var k = a.subject + '-' + a.week;
       if (!weeks[k]) weeks[k] = { all: true, any: false };
-      if (statusOf(state, a.id) !== 'done') weeks[k].all = false; else weeks[k].any = true;
+      // Une tâche sans gain dans la semaine : pas de bonus de semaine complète.
+      if (statusOf(state, a.id) !== 'done' || a.paid === false) weeks[k].all = false; else weeks[k].any = true;
     });
     Object.keys(weeks).forEach(function (k) { if (weeks[k].all && weeks[k].any) bonus += WEEK_BONUS; });
     var rmins = {}; cur.routines.forEach(function (r) { rmins[r.id] = r.mins; });
@@ -635,7 +639,13 @@
       toNext: next ? Math.round(100 * (total - LEVELS[lvl][0]) / (next[0] - LEVELS[lvl][0])) : 100, levels: LEVELS
     };
   }
-  function reward(a) { return rewardMins(a.mins); }
+  function reward(a) { return a.paid === false ? 0 : rewardMins(a.mins); }
+  // Semaine terminée : c'est seulement là qu'on peut choisir de ne rien gagner sur une tâche.
+  function weekIsPast(cur, n, today) {
+    if (n === 0) return true;
+    var ws = weekStart(cur, n);
+    return !!ws && addDays(ws, 6) < today;
+  }
 
   // ---------------------------------------------------------------- Mutations (pures : renvoient un nouvel état)
   function setStatus(state, id, s, p) {
@@ -653,6 +663,6 @@
     activities: activities, statusOf: statusOf, remainingMins: remainingMins, classify: classify,
     routinesFor: routinesFor, nextInSequence: nextInSequence,
     buildPlan: buildPlan, detectMissed: detectMissed, progress: progress, setStatus: setStatus, TIER_LABEL: TIER_LABEL,
-    wallet: wallet, reward: reward, rewardMins: rewardMins, levelReward: levelReward, newRewards: newRewards, examDate: examDate
+    wallet: wallet, reward: reward, weekIsPast: weekIsPast, rewardMins: rewardMins, levelReward: levelReward, newRewards: newRewards, examDate: examDate
   };
 })(typeof window !== 'undefined' ? window : globalThis);
