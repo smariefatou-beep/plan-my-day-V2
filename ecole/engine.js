@@ -607,12 +607,18 @@
   // Récompense d'un niveau, avec tes modifications éventuelles (state.rewards.custom).
   function levelReward(state, i) {
     var l = LEVELS[i], c = (((state || {}).rewards || {}).custom || {})[i] || {};
-    return { level: i, at: l[0], name: l[1], text: c.text || l[2], budget: c.budget != null ? c.budget : l[3] };
+    return { key: i, level: i, at: l[0], name: l[1], text: c.text || l[2], budget: c.budget != null ? c.budget : l[3] };
   }
-  // Niveaux atteints mais pas encore fêtés (pour la fenêtre « tu peux t'acheter une récompense »).
+  // Tes récompenses à toi, en plus de celles des niveaux : un montant à atteindre, un cadeau, un budget.
+  function extraRewards(state) {
+    return ((((state || {}).rewards || {}).extra) || []).slice().sort(function (x, y) { return x.at - y.at; })
+      .map(function (x) { return { key: x.id, id: x.id, at: x.at, name: 'Ma récompense', text: x.text, budget: x.budget, extra: true }; });
+  }
+  // Récompenses atteintes mais pas encore fêtées (pour la fenêtre « tu peux t'acheter une récompense »).
   function newRewards(state, w) {
-    var seen = ((state || {}).rewards || {}).seen || 0, out = [];
+    var rw = ((state || {}).rewards || {}), seen = rw.seen || 0, seenX = rw.extraSeen || {}, out = [];
     for (var i = seen + 1; i <= w.level; i++) if (LEVELS[i][2]) out.push(levelReward(state, i));
+    extraRewards(state).forEach(function (x) { if (w.total >= x.at && !seenX[x.id]) out.push(x); });
     return out;
   }
   function wallet(cur, state, settings) {
@@ -668,6 +674,6 @@
     activities: activities, statusOf: statusOf, remainingMins: remainingMins, classify: classify,
     routinesFor: routinesFor, nextInSequence: nextInSequence,
     buildPlan: buildPlan, detectMissed: detectMissed, progress: progress, setStatus: setStatus, TIER_LABEL: TIER_LABEL,
-    wallet: wallet, reward: reward, weekIsPast: weekIsPast, rewardMins: rewardMins, levelReward: levelReward, newRewards: newRewards, examDate: examDate
+    wallet: wallet, reward: reward, weekIsPast: weekIsPast, rewardMins: rewardMins, levelReward: levelReward, extraRewards: extraRewards, newRewards: newRewards, examDate: examDate
   };
 })(typeof window !== 'undefined' ? window : globalThis);

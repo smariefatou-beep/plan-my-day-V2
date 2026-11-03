@@ -220,7 +220,7 @@
     var seen = {};
     var weeks = [{
       n: 0, title: 'Avant le cours — lectures obligatoires',
-      topics: ['Lectures obligatoires avant le début du cours (avancées via ta routine « Lecture du livre de RI »)'],
+      topics: ['Lectures obligatoires avant le début du cours (avancées via ta routine « Lecture du livre d’International Relations »)'],
       activities: [
         reading('IR11-pre-allison', 'Graham Allison — « Destined for War » : l’Amérique et la Chine peuvent-elles échapper au piège de Thucydide ? (2017)', 0, { viaRoutine: 'ir-book', src: 'Syllabus : à lire avant le début du cours' }),
         reading('IR11-pre-ambrose', 'Ambrose & Brinkley — « Rise to Globalism » : la politique étrangère américaine depuis 1938 (2012)', 0, { viaRoutine: 'ir-book', src: 'Syllabus : à lire avant le début du cours' }),
@@ -262,7 +262,7 @@
       var p = wid('MG11', w.n);
       var list = workflow(p, { inClass: ['followup', 'seminar'] });
       list.forEach(function (a) { if (a.type === 'video') a.title = 'Regarder le cours préenregistré : ' + w.lecture; if (a.session === 'seminar') a.title = 'Exercices pendant le séminaire : ' + w.seminar; });
-      list.push(A(p + '-parents', 'film', 'Faire une vidéo pour les parents', 30, { step: 13, prereq: [p + '-fiches'], src: 'Ta demande : une vidéo chaque semaine de stratégie' }));
+      list.push(A(p + '-parents', 'film', 'Faire une vidéo pour les parents', 30, { step: 13, prereq: [p + '-fiches'], src: 'Ta demande : une vidéo chaque semaine de Business' }));
       w.readings.forEach(function (r) { list.push(reading(p + '-read-' + r[0], 'Lire : ' + r[1], r[2])); });
       list.push(A(p + '-proj', 'project', w.n === 11 ? 'Plan d’affaires — présentation finale prête' : 'Plan d’affaires — point de groupe après « ' + w.seminar + ' »', w.n === 11 ? 90 : 30, { syllabus: true, src: 'Syllabus MG11 — projet de groupe (40 %)' }));
       return { n: w.n, title: 'Séance ' + w.n + ' — ' + w.lecture, topics: ['Cours | ' + w.lecture].concat(w.extra ? [w.extra] : []).concat(['Séminaire | ' + w.seminar]), activities: list };
@@ -354,36 +354,36 @@
     }
     return weeks;
   }
-  function buildIT() { return buildLanguage('IT', 'd’italien', 0, 'lundi', { name: 'Italien', id: 'speexx', type: 'practice', title: 'Faire 1 h de Speexx', mins: 60 }); }
-  function buildZH() { return buildLanguage('ZH', 'de mandarin', 1, 'mardi', { name: 'Mandarin', id: 'youtube', type: 'video', title: 'Faire une recherche YouTube', mins: 30 }); }
+  function buildIT() { return buildLanguage('IT', 'd’italien', 0, 'lundi', { name: 'Italian', id: 'speexx', type: 'practice', title: 'Faire 1 h de Speexx', mins: 60 }); }
+  function buildZH() { return buildLanguage('ZH', 'de mandarin', 1, 'mardi', { name: 'Chinese', id: 'youtube', type: 'video', title: 'Faire une recherche YouTube', mins: 30 }); }
 
   // ================================================================ Matières
   // Couleurs reprises de tes dossiers ESCP B1. `prepOffset` = jour (après le lundi de la semaine)
   // avant lequel la préparation de la semaine est visée — un objectif, jamais une deadline.
   var SUBJECTS = [
     // color = pastel principal, soft = fond très clair, ink = texte lisible sur ces fonds.
-    { id: 'MA11', name: 'Fondamentaux des mathématiques 1', short: 'Maths', byChapter: true, color: '#EBA3BA', soft: '#F9DDE6', ink: '#9E4F6B', sequential: true, prepOffset: 6, prepDays: [4, 6, 0, 1, 2, 3, 5], ects: 6,
+    { id: 'MA11', name: 'Fundamentals of Mathematics 1', short: 'Maths', byChapter: true, color: '#EBA3BA', soft: '#F9DDE6', ink: '#9E4F6B', sequential: true, prepOffset: 6, prepDays: [4, 6, 0, 1, 2, 3, 5], ects: 6,
       books: ['Haeussler, Paul & Wood — « Introductory Mathematical Analysis » (14e éd.) : le manuel officiel du cours'],
       prepNote: 'Objectif : semaine bouclée avant le MyLab du lundi suivant.' },
-    { id: 'EC11', name: 'Microéconomie', short: 'Micro', color: '#C4ADE0', soft: '#ECE3F6', ink: '#76579B', sequential: true, prepOffset: 5, prepDays: [5, 1, 3, 6], ects: 6,
+    { id: 'EC11', name: 'Microeconomics', short: 'Microeconomics', color: '#C4ADE0', soft: '#ECE3F6', ink: '#76579B', sequential: true, prepOffset: 5, prepDays: [5, 1, 3, 6], ects: 6,
       books: ['Krugman & Wells — « Microeconomics » (3e éd.) : le manuel officiel du cours'],
       prepNote: 'Objectif : cours étudié avant le test hebdomadaire en ligne du samedi.' },
-    { id: 'IR11', name: 'Relations internationales et histoire européenne et mondiale', short: 'RI', color: '#F4C095', soft: '#FCE8D6', ink: '#A2653A', prepOffset: 0, prepDays: [4, 0], ects: 6,
+    { id: 'IR11', name: 'International Relations & European/World History', short: 'International Relations', color: '#F4C095', soft: '#FCE8D6', ink: '#A2653A', prepOffset: 0, prepDays: [4, 0], ects: 6,
       books: ['Best, Hanhimäki, Maiolo & Schulze — « International History of the Twentieth Century and Beyond » (4e éd.) : le manuel officiel du cours'],
       prepNote: 'Objectif : préparation finie avant le cours du lundi.' },
-    { id: 'MG11', name: 'Introduction aux organisations et à la stratégie d’entreprise', short: 'Stratégie', color: '#F2B8C9', soft: '#FCE6EC', ink: '#A0566F', prepOffset: 0, prepDays: [5, 4, 0], ects: 6,
+    { id: 'MG11', name: 'Introduction to Business Organisations & Strategy', short: 'Business', color: '#F2B8C9', soft: '#FCE6EC', ink: '#A0566F', prepOffset: 0, prepDays: [5, 4, 0], ects: 6,
       books: ['Johnson et al. — « Exploring Strategy » (13e éd.)', 'Bovee, Paul & Thill — « Business in Action » (10e éd.)', 'Sola & Couturier — « How to Think Strategically »'],
       prepNote: 'Objectif : préparation finie avant le cours du lundi.' },
-    { id: 'SK11', name: 'Présentation, débat et rhétorique', short: 'Rhétorique', color: '#EDD38A', soft: '#FAF0CF', ink: '#8E7024', prepOffset: 2, prepDays: [2, 1, 0], ects: 3,
+    { id: 'SK11', name: 'Presentation, Discussion and Rhetoric Skills', short: 'Rhetoric', color: '#EDD38A', soft: '#FAF0CF', ink: '#8E7024', prepOffset: 2, prepDays: [2, 1, 0], ects: 3,
       books: ['Pas de manuel obligatoire : tout est dans les vidéos Blackboard'],
       prepNote: 'Objectif : vidéos vues avant l’atelier du mercredi. L’examen final a eu lieu en octobre.' },
-    { id: 'LE11', name: 'Méthodologie universitaire', short: 'Méthodo', color: '#B6D39A', soft: '#E5F0D8', ink: '#5B7C42', prepOffset: 5, prepDays: [6, 0], ects: 3, weeksEstimated: true,
+    { id: 'LE11', name: 'Study Skills', short: 'Study Skills', color: '#B6D39A', soft: '#E5F0D8', ink: '#5B7C42', prepOffset: 5, prepDays: [6, 0], ects: 3, weeksEstimated: true,
       books: ['Cottrell — « The Study Skills Handbook » (5e éd.) : le manuel officiel du cours'],
       prepNote: 'Vidéos à faire le samedi, dès qu’elles sont disponibles.',
       finished: 'Examen final passé en octobre : ce qui reste devient facultatif, sans rattrapage.' },
-    { id: 'ZH', name: 'Chinois mandarin', short: 'Chinois', color: '#EFAE9C', soft: '#FBE2DA', ink: '#9E5A47', payFromWeek: 7, prepOffset: 6, prepDays: [0, 2],
+    { id: 'ZH', name: 'Mandarin Chinese', short: 'Chinese', color: '#EFAE9C', soft: '#FBE2DA', ink: '#9E5A47', payFromWeek: 7, prepOffset: 6, prepDays: [0, 2],
       prepNote: 'Ton rythme chaque semaine : cours et notes le mardi, révision et quiz le dimanche. Recherche YouTube à partir de la semaine 7.' },
-    { id: 'IT', name: 'Italien', short: 'Italien', color: '#A9CCE8', soft: '#E0EEF8', ink: '#4D7A9C', payFromWeek: 7, prepOffset: 6, prepDays: [0, 1],
+    { id: 'IT', name: 'Italian', short: 'Italian', color: '#A9CCE8', soft: '#E0EEF8', ink: '#4D7A9C', payFromWeek: 7, prepOffset: 6, prepDays: [0, 1],
       prepNote: 'Ton rythme chaque semaine : cours et notes le lundi, révision et quiz le dimanche. Speexx à partir de la semaine 7.' }
   ];
 
@@ -416,14 +416,14 @@
     { id: 'math-practice', title: 'Pratique de maths du jour', subject: 'MA11', mins: 30, days: [0, 1, 2, 3, 5, 6], daily: true, adaptive: 'MA11' },
     { id: 'math-practice-thu', title: 'Grosse séance de maths', subject: 'MA11', mins: 60, days: [4], daily: true, adaptive: 'MA11' },
     { id: 'zh-practice', title: 'Pratique du mandarin', subject: 'ZH', mins: 20, days: [0, 1, 2, 3, 4, 5, 6], daily: true },
-    { id: 'ir-book', title: 'Lecture du livre de RI', subject: 'IR11', mins: 20, days: [0, 1, 2, 3, 4, 5, 6], daily: true },
-    { id: 'class-flash', title: 'Pendant les cours de RI et de stratégie : cartes mémoire ou exercices si un moment s’y prête', subject: 'IR11', kind: 'class', mins: 0, days: [1] },
+    { id: 'ir-book', title: 'Lecture du livre d’International Relations', subject: 'IR11', mins: 20, days: [0, 1, 2, 3, 4, 5, 6], daily: true },
+    { id: 'class-flash', title: 'Pendant les cours d’International Relations et de Business : cartes mémoire ou exercices si un moment s’y prête', subject: 'IR11', kind: 'class', mins: 0, days: [1] },
     { id: 'zh-homework', title: 'Devoirs de mandarin', subject: 'ZH', mins: 30, days: [1] },
-    { id: 'micro-review', title: 'Révision micro : cartes mémoire, notes ou un petit exercice', subject: 'EC11', mins: 20, days: [1] },
+    { id: 'micro-review', title: 'Révision de Microeconomics : cartes mémoire, notes ou un petit exercice', subject: 'EC11', mins: 20, days: [1] },
     { id: 'zh-prep-tue', title: 'Préparer le mandarin pour mardi (si besoin)', subject: 'ZH', mins: 15, days: [1], optional: true },
     { id: 'check-new', title: 'Vérifier Blackboard / MyLab : nouveaux contenus et échéances', mins: 10, days: [3] },
     { id: 'mylab-check', title: 'Vérifier les devoirs MyLab de la semaine', subject: 'MA11', mins: 10, days: [6] },
-    { id: 'biz-monday', title: 'Vérifier les devoirs de stratégie dus lundi matin', subject: 'MG11', mins: 15, days: [0] },
+    { id: 'biz-monday', title: 'Vérifier les devoirs de Business dus lundi matin', subject: 'MG11', mins: 15, days: [0] },
     { id: 'zh-prep-sun', title: 'Préparer le mandarin (si besoin)', subject: 'ZH', mins: 15, days: [0], optional: true },
     { id: 'week-review', title: 'Revue de la semaine qui arrive : charge et priorités', mins: 15, days: [0] }
   ];

@@ -181,7 +181,7 @@
       var nx = E.nextInSequence(C, state, settings, mathR.adaptive, today, ['practice', 'reading', 'section', 'fiches']);
       if (nx) h += '<p class="garden-note">Pour ta pratique de maths, la suite logique : <b>' + esc(nx.title) + '</b> (S' + nx.week + '). <a href="#" class="btn-link" data-a="routine-link" data-r="' + mathR.id + '" data-id="' + esc(nx.id) + '">Fait, compte-le aussi</a></p>';
     }
-    h += '<p class="garden-note">Le livre de RI du jour avance tes lectures « avant le cours » (Allison, Ambrose & Brinkley).</p>';
+    h += '<p class="garden-note">Le livre d’International Relations du jour avance tes lectures « avant le cours » (Allison, Ambrose & Brinkley).</p>';
 
     if (doneIds.length) {
       h += '<div class="section-h"><h3>Déjà fait aujourd’hui</h3><span class="aside">' + doneIds.length + '</span></div>';
@@ -263,7 +263,7 @@
   }
 
   // ---------------------------------------------------------------- Carte
-  var MAP_POS = { MA11: [88, 100], EC11: [214, 92], MG11: [80, 214], SK11: [214, 226], IR11: [362, 212], LE11: [88, 322], ZH: [352, 330], IT: [214, 372] };
+  var MAP_POS = { MA11: [88, 100], EC11: [214, 92], MG11: [80, 214], SK11: [214, 226], IR11: [350, 212], LE11: [88, 322], ZH: [352, 330], IT: [214, 372] };
   var MAP_ROADS = [
     'M214 362C204 330 226 300 214 262C204 232 226 200 216 170C206 140 222 120 214 98',
     'M216 170C180 160 150 140 120 130C104 124 94 116 90 104',
@@ -279,9 +279,11 @@
     h += '<div class="grid-2"><div class="map-wrap grain"><svg viewBox="0 0 420 430" role="img" aria-label="Carte des matières">' + ART.mapScene(MAP_ROADS);
     C.subjects.forEach(function (s) {
       var p = MAP_POS[s.id], r = pr[s.id];
+      // Un nom long (« International Relations ») passe sur deux lignes pour rester dans la carte.
+      var words = s.short.split(' '), lines = s.short.length > 14 && words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [s.short];
       h += '<g class="map-place" data-a="subject" data-id="' + s.id + '" role="button" tabindex="0" aria-label="' + esc(s.short) + '"><g class="bld"><g transform="translate(' + p[0] + ' ' + p[1] + ') scale(.78)">' + ART.building(BUILDING[s.id], 0, 0, s.color, s.soft) + '</g></g>' +
-        '<text x="' + p[0] + '" y="' + (p[1] + 18) + '" text-anchor="middle" class="map-label">' + esc(s.short) + '</text>' +
-        '<text x="' + p[0] + '" y="' + (p[1] + 30) + '" text-anchor="middle" class="map-pct">' + (s.noSyllabus ? 'routines' : s.finished ? 'examen passé' : r.pct + ' % fait') + '</text></g>';
+        '<text x="' + p[0] + '" y="' + (p[1] + 18) + '" text-anchor="middle" class="map-label">' + lines.map(function (l, i) { return '<tspan x="' + p[0] + '" dy="' + (i ? 11 : 0) + '">' + esc(l) + '</tspan>'; }).join('') + '</text>' +
+        '<text x="' + p[0] + '" y="' + (p[1] + 30 + (lines.length - 1) * 11) + '" text-anchor="middle" class="map-pct">' + (s.noSyllabus ? 'routines' : s.finished ? 'examen passé' : r.pct + ' % fait') + '</text></g>';
     });
     h += '</svg></div><div class="subj-list">';
     C.subjects.forEach(function (s) {
@@ -427,6 +429,17 @@
         (i ? '<div class="rw"><span class="rw-txt">' + esc(rw.text) + '</span><span class="rw-budget">Budget : ' + rw.budget + ' €</span></div>' : '') +
         '<div class="lv-foot">' + foot + (i ? '<button class="btn-link" data-a="reward-edit" data-l="' + i + '">Modifier</button>' : '') + '</div></div>';
     }).join('') + '</div>';
+    var mine = E.extraRewards(state);
+    h += '<div class="section-h"><h3>Mes récompenses à moi</h3><button class="btn soft small" data-a="xreward-edit" data-id="">+ Ajouter une récompense</button></div>' +
+      (mine.length ? '<div class="levels">' + mine.map(function (rw) {
+        var got = w.total >= rw.at;
+        var foot = taken[rw.key] ? '<span class="rw-state ok">Offerte le ' + shortDate(taken[rw.key]) + ' ✓</span>' :
+          got ? '<button class="btn small" data-a="reward-take" data-l="' + esc(rw.key) + '">Je me l’offre</button>' : '<small>encore ' + money(rw.at - w.total) + '</small>';
+        return '<div class="level' + (got ? ' got' : '') + (got && !taken[rw.key] ? ' ready' : '') + '">' +
+          '<div class="lv-top">' + ART.icon('coin', got ? '#F5D27E' : '#EFE6DA', 26) + '<span><b>' + esc(rw.text) + '</b>' + money(rw.at) + '</span></div>' +
+          '<div class="rw"><span class="rw-budget">Budget : ' + rw.budget + ' €</span></div>' +
+          '<div class="lv-foot">' + foot + '<button class="btn-link" data-a="xreward-edit" data-id="' + esc(rw.id) + '">Modifier</button></div></div>';
+      }).join('') + '</div>' : '<p class="soft-note">Ajoute tes propres cadeaux : choisis le montant à atteindre dans ta tirelire et ton budget.</p>');
 
     if (!assessedCount().done) h += '<div class="banner"><div class="b-txt"><b>Ton vrai retard n’est pas encore calculé</b>Tant que tu n’as pas coché ce que tu as déjà fait, tout apparaît « à faire ». Fais ton bilan sur la carte : les chiffres ci-dessous deviendront justes.</div><button class="btn" data-a="go" data-view="subjects">Faire le bilan</button></div>';
 
@@ -583,7 +596,7 @@
     var subs = C.subjects.filter(function (s) { return !s.noSyllabus; });
     var h = '<div class="s-title">' + (date === today ? 'Aujourd’hui' : longDate(date)) + '</div><div class="s-sub">Ajoute une tâche à toi, ou choisis une étape du programme à faire ce jour-là.</div>' +
       '<div class="grp-h" style="margin-top:4px;">Une tâche à moi</div>' +
-      '<div class="field" style="margin-top:0;"><input class="inp" id="xtitle" placeholder="ex. Relire mes notes de micro au café"></div>' +
+      '<div class="field" style="margin-top:0;"><input class="inp" id="xtitle" placeholder="ex. Relire mes notes de Microeconomics au café"></div>' +
       '<div style="display:flex;gap:8px;margin-top:8px;"><input class="inp" id="xmins" type="number" min="5" step="5" value="30" style="width:90px;"><select class="inp" id="xsub" style="flex:1;"><option value="">Sans matière</option>' + C.subjects.map(function (s) { return '<option value="' + s.id + '">' + esc(s.short) + '</option>'; }).join('') + '</select><button class="btn" data-x="addx">Ajouter</button></div>' +
       '<div class="grp-h">Une étape du programme</div><select class="inp" id="psub" style="width:100%;">' + subs.map(function (s) { return '<option value="' + s.id + '">' + esc(s.short) + '</option>'; }).join('') + '</select><div class="pick-list" id="plist"></div>' +
       '<div class="sheet-actions"><button class="btn soft" data-x="close">Fermer</button></div>';
@@ -673,12 +686,18 @@
   function checkRewards() {
     if (document.getElementById('sheet')) return;
     var w = E.wallet(C, state, settings), list = E.newRewards(state, w);
-    S.updateState(function (st) { st.rewards = st.rewards || { seen: 0, taken: {}, custom: {} }; if ((st.rewards.seen || 0) < w.level) st.rewards.seen = w.level; });
+    S.updateState(function (st) {
+      st.rewards = st.rewards || { seen: 0, taken: {}, custom: {} };
+      if ((st.rewards.seen || 0) < w.level) st.rewards.seen = w.level;
+      st.rewards.extraSeen = st.rewards.extraSeen || {};
+      list.forEach(function (r) { if (r.extra) st.rewards.extraSeen[r.id] = true; });
+    });
     if (!list.length) return;
     state = S.getState();
     var last = list[list.length - 1];
-    var h = '<div class="celebrate">' + ART.piggyBank(120) + '<div class="s-title">Niveau ' + (last.level + 1) + ' atteint !</div>' +
-      '<div class="s-sub">Tu es maintenant « ' + esc(last.name) + ' ». Tu as gagné le droit de t’offrir une récompense, pour de vrai :</div>' +
+    var lvl = list.filter(function (r) { return !r.extra; }).pop();
+    var h = '<div class="celebrate">' + ART.piggyBank(120) + '<div class="s-title">' + (lvl ? 'Niveau ' + (lvl.level + 1) + ' atteint !' : 'Récompense débloquée !') + '</div>' +
+      '<div class="s-sub">' + (lvl ? 'Tu es maintenant « ' + esc(lvl.name) + ' ». ' : '') + 'Tu as gagné le droit de t’offrir une récompense, pour de vrai :</div>' +
       list.map(function (r) { return '<div class="rw big"><span class="rw-txt">' + esc(r.text) + '</span><span class="rw-budget">Budget : ' + r.budget + ' €</span><small>' + esc(r.name) + ' · ' + money(r.at) + '</small></div>'; }).join('') +
       '<div class="sheet-actions" style="justify-content:center;"><button class="btn soft" data-x="close">Plus tard</button><button class="btn" data-x="take">Je me l’offre maintenant</button></div>' +
       '<p class="soft-note" style="text-align:center;margin-top:10px;">« Plus tard » : elle t’attend dans ta tirelire.</p></div>';
@@ -686,7 +705,7 @@
       petals(root.querySelector('.piggy'));
       root.querySelector('[data-x="close"]').onclick = closeSheet;
       root.querySelector('[data-x="take"]').onclick = function () {
-        S.updateState(function (st) { list.forEach(function (r) { st.rewards.taken[r.level] = today; }); });
+        S.updateState(function (st) { st.rewards.taken = st.rewards.taken || {}; list.forEach(function (r) { st.rewards.taken[r.key] = today; }); });
         closeSheet(); rerender(); toast('Profite bien, tu l’as mérité ✿');
       };
     });
@@ -702,6 +721,41 @@
       root.querySelector('[data-x="save"]').onclick = function () {
         var t = root.querySelector('#rwtext').value.trim(), b = +root.querySelector('#rwbudget').value;
         S.updateState(function (st) { st.rewards = st.rewards || { seen: 0, taken: {}, custom: {} }; st.rewards.custom = st.rewards.custom || {}; st.rewards.custom[i] = { text: t || null, budget: isNaN(b) ? null : b }; });
+        closeSheet(); rerender(); toast('Récompense enregistrée');
+      };
+    });
+  }
+
+  function openExtraReward(id) {
+    var rw = E.extraRewards(state).filter(function (x) { return x.id === id; })[0] || { text: '', at: Math.ceil((E.wallet(C, state, settings).total + 100) / 50) * 50, budget: 10 };
+    var h = '<div class="s-title">' + (id ? 'Ma récompense' : 'Nouvelle récompense') + '</div><div class="s-sub">Elle se débloque quand ta tirelire atteint le montant choisi.</div>' +
+      '<div class="field"><label>Ce que je m’offre</label><input class="inp" id="xrtext" value="' + esc(rw.text) + '" placeholder="ex. Une séance de cinéma"></div>' +
+      '<div class="field"><label>Quand ma tirelire atteint (en $)</label><input class="inp" id="xrat" type="number" min="1" step="10" value="' + rw.at + '"></div>' +
+      '<div class="field"><label>Budget (en euros)</label><input class="inp" id="xrbudget" type="number" min="0" step="1" value="' + rw.budget + '"></div>' +
+      '<div class="sheet-actions">' + (id ? '<button class="btn soft" data-x="del" style="margin-right:auto;color:#B35A6E;">Supprimer</button>' : '') +
+      '<button class="btn soft" data-x="close">Annuler</button><button class="btn" data-x="save">Enregistrer</button></div>';
+    sheet(h, function (root) {
+      root.querySelector('[data-x="close"]').onclick = closeSheet;
+      var del = root.querySelector('[data-x="del"]');
+      if (del) del.onclick = function () {
+        S.updateState(function (st) { st.rewards.extra = (st.rewards.extra || []).filter(function (x) { return x.id !== id; }); });
+        closeSheet(); rerender(); toast('Récompense supprimée');
+      };
+      root.querySelector('[data-x="save"]').onclick = function () {
+        var t = root.querySelector('#xrtext').value.trim(), at = +root.querySelector('#xrat').value, b = +root.querySelector('#xrbudget').value;
+        if (!t) { root.querySelector('#xrtext').focus(); return; }
+        if (!(at > 0)) { root.querySelector('#xrat').focus(); return; }
+        var total = E.wallet(C, state, settings).total;
+        S.updateState(function (st) {
+          st.rewards = st.rewards || { seen: 0, taken: {}, custom: {} };
+          st.rewards.extra = st.rewards.extra || [];
+          st.rewards.extraSeen = st.rewards.extraSeen || {};
+          var x = id ? st.rewards.extra.filter(function (r) { return r.id === id; })[0] : null;
+          if (!x) { x = { id: 'r-' + Date.now().toString(36) }; st.rewards.extra.push(x); }
+          x.text = t; x.at = at; x.budget = isNaN(b) ? 0 : b;
+          // Déjà atteinte au moment où tu la crées : pas besoin de fenêtre de fête, elle est prête dans la liste.
+          if (total >= at) st.rewards.extraSeen[x.id] = true; else delete st.rewards.extraSeen[x.id];
+        });
         closeSheet(); rerender(); toast('Récompense enregistrée');
       };
     });
@@ -807,6 +861,7 @@
       case 'restore': restoreTask(id); break;
       case 'reward-take': S.updateState(function (st) { st.rewards = st.rewards || { seen: 0, taken: {}, custom: {} }; st.rewards.taken = st.rewards.taken || {}; st.rewards.taken[t.dataset.l] = today; }); rerender(); toast('Profite bien, tu l’as mérité ✿'); break;
       case 'reward-edit': openRewardEdit(+t.dataset.l); break;
+      case 'xreward-edit': openExtraReward(t.dataset.id || null); break;
       case 'day-add': openDayAdd(t.dataset.date); break;
       case 'helper': openHelper(); break;
       case 'wpage': ui.weekPage = Math.max(0, Math.min(1, ui.weekPage + +t.dataset.d)); render(); break;

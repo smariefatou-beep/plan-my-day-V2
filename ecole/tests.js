@@ -253,6 +253,14 @@
     wk('MA11-c6-reallife') === 7 && wk('MA11-w08-sec1') === 8 && wk('MA11-w08-mylab') === 8 && E.activities(CUR, empty, settings).filter(function (a) { return /-mylab$/.test(a.id); }).length === 11,
     '25. Maths : 8 chapitres, 4 étapes communes puis les sous-chapitres, MyLab chaque semaine');
 
+  // 26. Récompenses à toi : débloquées au montant choisi, fêtées une seule fois
+  var xr = E.emptyState(); xr.rewards = { seen: 0, taken: {}, custom: {}, extra: [{ id: 'r-a', text: 'Cinéma', at: 5, budget: 12 }, { id: 'r-b', text: 'Livre', at: 9999, budget: 20 }] };
+  xr = E.setStatus(xr, 'EC11-w01-understand', 'done');
+  var xw = E.wallet(CUR, xr, settings), xn = E.newRewards(xr, xw);
+  xr.rewards.extraSeen = { 'r-a': true };
+  ok(xn.length === 1 && xn[0].text === 'Cinéma' && E.newRewards(xr, xw).length === 0 && E.extraRewards(xr)[1].at === 9999,
+    '26. Une récompense à toi se débloque à son montant, une seule fois');
+
   out.push('');
   out.push(fails ? fails + ' test(s) en échec' : 'Tous les tests passent (' + out.length + ' vérifications).');
   root.SCHOOL_TEST_RESULTS = { lines: out, fails: fails, plan: plan };
