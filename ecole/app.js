@@ -9,7 +9,7 @@
   var TYPE = {
     understand: 'Comprendre', video: 'Vidéo', write: 'Écrire le cours', read: 'Lire le cours', chat: 'Discussion avec ChatGPT', film: 'Vidéo pour les parents', aiquiz: 'Quiz IA',
     notebooklm: 'NotebookLM', fiches: 'Fiches', inclass: 'En classe', test: 'Test en ligne', practice: 'Exercices',
-    reading: 'Manuel', prep: 'Prépa séminaire', project: 'Projet de groupe', revision: 'Révision', mine: 'Mon ajout'
+    reading: 'Manuel', reallife: 'Vraie vie', section: 'Sous-chapitre', prep: 'Prépa séminaire', project: 'Projet de groupe', revision: 'Révision', mine: 'Mon ajout'
   };
   var KIND = { deadline: 'Échéance', current: 'Cours actuel', catchup: 'Rattrapage', seminar: 'En classe', optional: 'Facultatif', mine: 'Mon ajout' };
   var MASTERY = ['Graine', 'Pousse', 'Bouton', 'En fleur'];
@@ -93,7 +93,7 @@
       (opts.stepN ? '<span class="step-n">' + opts.stepN + '</span>' : '') +
       stoneBtn(a, opts.trail ? '' : 'inline') +
       '<div class="t-ico">' + ART.icon(a.type === 'test' ? 'test' : a.type, s.color, 22) + '</div>' +
-      '<div class="t-main">' + (opts.noSubject ? '' : '<span class="t-subj">' + esc(s.short) + (a.week > 0 && a.week < 12 ? ' · S' + a.week : '') + '</span>') +
+      '<div class="t-main">' + (opts.noSubject ? '' : '<span class="t-subj">' + esc(s.short) + (a.unitLabel ? ' · ' + a.unitLabel : a.week > 0 && a.week < 12 ? ' · S' + a.week : '') + '</span>') +
       '<div class="t-title">' + esc(a.title) + '</div>' +
       '<div class="t-meta">' + pills(a, it, opts) + '<span class="pill money mob">' + gain(a) + '</span></div>' +
       (it && it.reason ? '<details class="why"><summary>Pourquoi ' + (opts.dayLabel || 'aujourd’hui') + ' ?</summary><p>' + esc(it.reason) + '</p></details>' : '') +
@@ -178,7 +178,7 @@
     if (classes.length) h += '<p class="garden-note">' + classes.map(function (r) { return esc(r.title); }).join(' · ') + '</p>';
     var mathR = day.routines.filter(function (r) { return r.adaptive; })[0];
     if (mathR) {
-      var nx = E.nextInSequence(C, state, settings, mathR.adaptive, today, ['practice', 'reading', 'fiches']);
+      var nx = E.nextInSequence(C, state, settings, mathR.adaptive, today, ['practice', 'reading', 'section', 'fiches']);
       if (nx) h += '<p class="garden-note">Pour ta pratique de maths, la suite logique : <b>' + esc(nx.title) + '</b> (S' + nx.week + '). <a href="#" class="btn-link" data-a="routine-link" data-r="' + mathR.id + '" data-id="' + esc(nx.id) + '">Fait, compte-le aussi</a></p>';
     }
     h += '<p class="garden-note">Le livre de RI du jour avance tes lectures « avant le cours » (Allison, Ambrose & Brinkley).</p>';
@@ -303,10 +303,13 @@
     s.weeks.forEach(function (w) {
       if (first !== null) return;
       var pending = w.activities.some(function (a) { return !a.optional && stOf(a.id).s !== 'done'; });
-      if (pending && w.n > 0 && w.n <= cur) first = w.n;
+      if (pending && w.n > 0 && (w.calWeek || w.n) <= cur) first = w.n;
     });
-    var has = s.weeks.some(function (w) { return w.n === cur; });
-    return first !== null ? first : (has ? cur : (s.weeks[0] ? s.weeks[0].n : null));
+    var now = s.weeks.filter(function (w) { return holds(w, cur); })[0];
+    return first !== null ? first : (now ? now.n : (s.weeks[0] ? s.weeks[0].n : null));
+  }
+  // Une case du village contient-elle cette semaine du calendrier ? (un chapitre peut en couvrir deux)
+  function holds(w, n) { return w.span ? w.span.indexOf(n) !== -1 : w.n === n;
   }
 
   function subjectDetail(s) {
@@ -350,21 +353,21 @@
       var nDone = list.filter(function (a) { return stOf(a.id).s === 'done'; }).length;
       var full = list.length && nDone === list.length;
       var lvl = full ? 3 : !nDone ? 0 : nDone * 2 >= list.length ? 2 : 1;
-      var ws = E.weekStart(C, w.n);
-      h += '<button class="wchip' + (w.n === ui.week ? ' on' : '') + (full ? ' full' : '') + (w.n === curN ? ' now' : '') + '" data-a="week" data-n="' + w.n + '" title="' + nDone + '/' + list.length + ' étapes faites">' +
-        ART.plant(lvl, s.color) + '<b>' + (w.n === 0 ? 'Avant' : w.n === 12 ? 'En plus' : 'S' + w.n) + '</b><small>' + (w.n === 12 ? 'à ton rythme' : w.n === 0 ? 'le cours' : shortDate(ws)) + '</small></button>';
+      var ws = E.weekStart(C, w.calWeek || w.n);
+      h += '<button class="wchip' + (w.n === ui.week ? ' on' : '') + (full ? ' full' : '') + (holds(w, curN) ? ' now' : '') + '" data-a="week" data-n="' + w.n + '" title="' + nDone + '/' + list.length + ' étapes faites">' +
+        ART.plant(lvl, s.color) + '<b>' + (w.label || (w.n === 0 ? 'Avant' : w.n === 12 ? 'En plus' : 'S' + w.n)) + '</b><small>' + (w.n === 12 ? 'à ton rythme' : w.n === 0 ? 'le cours' : shortDate(ws)) + '</small></button>';
     });
     h += '</div>';
 
     var wk = s.weeks.filter(function (w) { return w.n === ui.week; })[0];
     if (!wk) return h;
-    var ws = E.weekStart(C, wk.n);
-    var acts = E.activities(C, state, settings).filter(function (a) { return a.subject === s.id && a.week === wk.n; });
+    var ws = E.weekStart(C, wk.calWeek || wk.n);
+    var acts = E.activities(C, state, settings).filter(function (a) { return a.subject === s.id && a.unit === wk.n; });
     h += '<div class="card week-card meadow" style="margin-top:6px;' + vars(s) + '">';
-    h += '<h3>' + esc(wk.title) + '</h3><div class="wk-date">' + (wk.n === 0 ? 'Avant le 7 septembre' : wk.n === 12 ? 'Contenu en autonomie' : 'Semaine ' + wk.n + ' · à partir du lundi ' + shortDate(ws) + (wk.n === curN ? ' · c’est la semaine en cours' : '')) + '</div>';
+    h += '<h3>' + esc(wk.title) + '</h3><div class="wk-date">' + (wk.n === 0 ? 'Avant le 7 septembre' : wk.n === 12 ? 'Contenu en autonomie' : (wk.span ? 'Semaine' + (wk.span.length > 1 ? 's ' + wk.span.join(' et ') : ' ' + wk.span[0]) : 'Semaine ' + wk.n) + ' · à partir du lundi ' + shortDate(ws) + (holds(wk, curN) ? ' · c’est en cours' : '')) + '</div>';
     (wk.flags || []).forEach(function (f) { h += '<div class="flag">' + esc(f) + '</div>'; });
     if (wk.note) h += '<div class="flag" style="background:var(--lilac-soft);color:#76579B;">' + esc(wk.note) + '</div>';
-    if (wk.topics && wk.topics.length) h += '<details style="margin-top:10px;"><summary class="btn-link" style="cursor:pointer;">Ce qu’on voit cette semaine (' + wk.topics.length + ')</summary><ul class="topics">' + wk.topics.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></details>';
+    if (wk.topics && wk.topics.length) h += '<details style="margin-top:10px;"><summary class="btn-link" style="cursor:pointer;">Ce qu’on voit ' + (wk.span ? 'dans ce chapitre' : 'cette semaine') + ' (' + wk.topics.length + ')</summary><ul class="topics">' + wk.topics.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></details>';
 
     var method = acts.filter(function (a) { return a.step; }).sort(function (x, y) { return x.step - y.step || x.seq - y.seq; });
     var syl = acts.filter(function (a) { return !a.step; });
@@ -387,7 +390,7 @@
       h += '<div class="grp-h">Ma maîtrise</div><div class="grp-sub">Ton ressenti à toi : cocher les étapes ne fait pas pousser la fleur.</div><div class="mastery">' +
         MASTERY.map(function (m, i) { return '<button class="' + (mv === i ? 'on' : '') + '" data-a="mastery" data-k="' + mk + '" data-v="' + i + '" title="' + MASTERY_HINT[i] + '">' + ART.plant(i, s.color) + m + '</button>'; }).join('') + '</div>';
     }
-    h += '<div class="row-actions"><button class="btn soft small" data-a="weekall" data-id="' + s.id + '" data-n="' + wk.n + '">Toute la semaine est déjà faite</button>' +
+    h += '<div class="row-actions"><button class="btn soft small" data-a="weekall" data-id="' + s.id + '" data-n="' + wk.n + '">' + (wk.span ? 'Tout le chapitre est déjà fait' : 'Toute la semaine est déjà faite') + '</button>' +
       '<button class="btn soft small" data-a="add" data-id="' + s.id + '" data-n="' + wk.n + '">+ Ajouter une activité</button></div></div>';
     return h;
   }
@@ -509,7 +512,7 @@
     var a = act(id); if (!a) return;
     var s = subj(a.subject), st = stOf(id), pi = plannedItem(id), pinned = (state.pins || {})[id];
     var cur = st.s === 'todo' && a.blocked ? 'blocked' : st.s;
-    var h = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;' + vars(s) + '"><span class="pill subj">' + esc(s.short) + (a.week ? ' · S' + a.week : '') + '</span><span class="pill">' + (TYPE[a.type] || a.type) + '</span><span class="pill money">' + gain(a) + '</span></div>' +
+    var h = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;' + vars(s) + '"><span class="pill subj">' + esc(s.short) + (a.unitLabel ? ' · ' + a.unitLabel : a.week ? ' · S' + a.week : '') + '</span><span class="pill">' + (TYPE[a.type] || a.type) + '</span><span class="pill money">' + gain(a) + '</span></div>' +
       '<h3>' + esc(a.title) + '</h3><div class="s-sub">' + esc(a.weekTitle || '') + '</div>';
     if (pi) h += '<div class="soft-note">Prévu <b>' + E.niceDay(pi.date, today) + '</b> : ' + esc(pi.item.reason) + '</div>';
     h += '<div class="field"><label>Nom de la tâche</label><input class="inp" id="ftitle" value="' + esc(a.title) + '"><small>' + (a.originalTitle ? 'Nom d’origine : ' + esc(a.originalTitle) + '. Vide la case pour le retrouver.' : 'Tu peux la renommer comme tu veux.') + '</small></div>';
@@ -813,7 +816,7 @@
       case 'mastery': S.updateState(function (st) { st.mastery = st.mastery || {}; if (st.mastery[t.dataset.k] === +t.dataset.v) delete st.mastery[t.dataset.k]; else st.mastery[t.dataset.k] = +t.dataset.v; }); rerender(); break;
       case 'weekall': {
         var n = +t.dataset.n, before = JSON.parse(JSON.stringify(S.getState()));
-        var ids = E.activities(C, state, settings).filter(function (x) { return x.subject === id && x.week === n && !x.optional; }).map(function (x) { return x.id; });
+        var ids = E.activities(C, state, settings).filter(function (x) { return x.subject === id && x.unit === n && !x.optional; }).map(function (x) { return x.id; });
         S.setMany(ids, 'done'); rerender();
         toast('Semaine ' + n + ' cochée', function () { S.saveState(before); rerender(); });
         break;

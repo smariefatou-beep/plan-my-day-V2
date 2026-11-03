@@ -41,7 +41,9 @@
     leaf: function (c) { return '<path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z" fill="' + (c || LEAF) + '"/><path d="M5 19c3-4 6-7 10-10"/>'; },
     bell: function (c) { return '<path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2H5z" fill="' + (c || '#F6D27A') + '"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'; },
     back: function () { return '<path d="M15 5l-7 7 7 7"/>'; }
-  };
+  };  ICONS.reallife = ICONS.understand;
+  ICONS.section = ICONS.reading;
+
   function icon(name, color, size) {
     var f = ICONS[name] || ICONS.mine;
     var s = size || 24;

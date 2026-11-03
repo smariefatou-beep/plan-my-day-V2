@@ -88,9 +88,14 @@
     var ov = state.overrides || {};
     function finish(a, subj, wk) {
       var o = ov[a.id] || {};
-      var ws = weekStart(cur, wk.n);
+      // `unit` = la case du village (une semaine, ou un chapitre en maths) ; `week` = la semaine
+      // du calendrier où la tâche est prévue (`calWeek` d'une tâche ou de son chapitre).
+      var wn = a.calWeek || wk.calWeek || wk.n;
+      var ws = weekStart(cur, wn);
       a.subject = subj.id;
-      a.week = wk.n;
+      a.unit = wk.n;
+      a.unitLabel = wk.label || null;
+      a.week = wn;
       a.weekTitle = wk.title;
       a.seq = seq++;
       if (o.mins != null) a.mins = o.mins;
@@ -101,7 +106,7 @@
       if ((state.removed || {})[a.id]) a.removed = true;
       // Matière dont l'examen final est passé : ce qui reste devient facultatif.
       if (subj.finished && !a.optional) { a.optional = true; a.finished = true; }
-      a.target = ws ? addDays(ws, wk.n === 0 ? 7 : (subj.prepOffset || 0)) : null;
+      a.target = ws ? addDays(ws, wn === 0 ? 7 : (subj.prepOffset || 0)) : null;
       if (a.dueOffset != null && ws) a.due = addDays(ws, a.dueOffset);
       if (o.due !== undefined) { a.due = o.due || null; a.dueSrc = o.due ? 'Date saisie par toi' : a.dueSrc; }
       if (a.due && a.target && a.target > a.due) a.target = a.due;
@@ -113,10 +118,10 @@
       // préparé le jeudi/dimanche précédent). Marque « bloqué » ce qui n'est pas encore en ligne.
       var online = a.type === 'video' || a.type === 'test' || a.inClass;
       a.release = o.release !== undefined ? o.release :
-        (a.fixedDate || (online && ws && wk.n > 0 ? addDays(ws, subj.prepOffset === 0 ? -7 : 0) : null));
+        (a.fixedDate || (online && ws && wn > 0 ? addDays(ws, subj.prepOffset === 0 ? -7 : 0) : null));
       // Séance en classe (follow-up, séminaire, atelier) : son jour vient de ton emploi du temps.
       a.classDate = null;
-      if (a.inClass && ws && wk.n > 0) {
+      if (a.inClass && ws && wn > 0) {
         (settings.timetable || []).forEach(function (t) {
           if (t.subject === subj.id && t.kind === a.session && t.day != null) {
             var d = addDays(ws, (t.day + 6) % 7);
@@ -368,7 +373,7 @@
         if (!subj) return;
         var sem = acts.filter(function (a) { return a.subject === t.subject && a.inClass && a.session === t.kind && a.week === day.academicWeek; })[0];
         var info = { subject: t.subject, kind: t.kind, start: t.start, end: t.end, week: day.academicWeek, activity: sem ? sem.id : null, note: null };
-        if (!sem) info.note = 'Pas d’exercices prévus par le syllabus pour cette semaine.';
+        if (!sem) info.note = subj.byChapter ? null : 'Pas d’exercices prévus par le syllabus pour cette semaine.';
         else if (cls[sem.id] === 'done') info.note = 'Exercices déjà faits ✓';
         else if (cls[sem.id] === 'inclass' && !placedOn[sem.id]) {
           (sem.prereq || []).forEach(function (pid) {
@@ -552,7 +557,7 @@
         if (a.due && c !== 'done' && a.due >= today && diffDays(today, a.due) <= 14) r.upcoming.push(a);
         return;
       }
-      var w = r.weeks[a.week] || (r.weeks[a.week] = { totalMins: 0, doneMins: 0, total: 0, done: 0 });
+      var w = r.weeks[a.unit] || (r.weeks[a.unit] = { totalMins: 0, doneMins: 0, total: 0, done: 0 });
       var doneMins = a.mins - remainingMins(a, state);
       r.total++; w.total++;
       r.totalMins += a.mins; w.totalMins += a.mins;
@@ -618,7 +623,7 @@
       var part = a.mins ? (a.mins - remainingMins(a, state)) / a.mins : (statusOf(state, a.id) === 'done' ? 1 : 0);
       work += Math.round(part * reward(a));
       if (a.week == null || a.optional || a.viaRoutine || a.removed) return;
-      var k = a.subject + '-' + a.week;
+      var k = a.subject + '-' + a.unit;
       if (!weeks[k]) weeks[k] = { all: true, any: false };
       // Une tâche sans gain dans la semaine : pas de bonus de semaine complète.
       if (statusOf(state, a.id) !== 'done' || a.paid === false) weeks[k].all = false; else weeks[k].any = true;

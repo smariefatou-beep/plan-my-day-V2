@@ -81,8 +81,8 @@
   var stB = E.setStatus(st, 'MA11-w07-video', 'blocked');
   var planB = E.buildPlan(CUR, stB, settings, TODAY, null);
   var blockedIds = planItems(planB).map(function (i) { return i.id; });
-  ok(blockedIds.indexOf('MA11-w07-video') === -1 && blockedIds.indexOf('MA11-w07-mylab') === -1,
-    '7c. Vidéo bloquée (pas dispo) → ni elle ni le MyLab qui en dépend ne sont planifiés');
+  ok(blockedIds.indexOf('MA11-w07-video') === -1 && blockedIds.indexOf('MA11-w07-sec1') === -1,
+    '7c. Vidéo bloquée (pas dispo) → ni elle ni les sous-chapitres qui en dépendent ne sont planifiés');
 
   // 8. Exercices de séminaire
   var s2 = JSON.parse(JSON.stringify(settings));
@@ -243,6 +243,15 @@
   var payA = E.activities(CUR, payS, settings).filter(function (a) { return a.id === 'EC11-w01-understand'; })[0];
   ok(E.wallet(CUR, payS, settings).total === 12 && payA.title === 'Mon nom à moi', '24c. Le choix par tâche et le nouveau nom sont respectés', E.wallet(CUR, payS, settings).total);
   ok(E.weekIsPast(CUR, 6, '2026-11-02') && !E.weekIsPast(CUR, 7, '2026-11-02') && E.weekIsPast(CUR, 7, '2026-11-09'), '24d. Le choix n’existe que pour les semaines terminées');
+
+  // 25. Maths par chapitre : 8 chapitres, 4 étapes communes puis les sous-chapitres
+  var maS = CUR.subjects.filter(function (x) { return x.id === 'MA11'; })[0];
+  var ch1 = maS.weeks[0].activities.filter(function (a) { return a.step; }).map(function (a) { return a.type; });
+  var ch6 = E.activities(CUR, empty, settings).filter(function (a) { return a.subject === 'MA11' && a.unit === 6; });
+  var wk = function (id) { return ch6.filter(function (a) { return a.id === id; })[0].week; };
+  ok(maS.weeks.length === 8 && ch1.slice(0, 4).join() === 'reallife,reading,practice,video' && ch1.slice(4).every(function (t) { return t === 'section'; }) &&
+    wk('MA11-c6-reallife') === 7 && wk('MA11-w08-sec1') === 8 && wk('MA11-w08-mylab') === 8 && E.activities(CUR, empty, settings).filter(function (a) { return /-mylab$/.test(a.id); }).length === 11,
+    '25. Maths : 8 chapitres, 4 étapes communes puis les sous-chapitres, MyLab chaque semaine');
 
   out.push('');
   out.push(fails ? fails + ' test(s) en échec' : 'Tous les tests passent (' + out.length + ' vérifications).');

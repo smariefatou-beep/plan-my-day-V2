@@ -156,15 +156,46 @@
       sections: [['6.4 Résoudre des systèmes par réduction de matrices', 25], ['6.5 Résoudre des systèmes par réduction de matrices (suite)', 20], ['6.6 Matrices inverses', 25]], revision: true }
   ];
 
+  // Les maths se font par chapitre (= une séance du programme, parfois deux semaines).
+  // Chaque chapitre : 4 étapes communes, puis un sous-chapitre = une tâche. Le MyLab reste
+  // hebdomadaire, rattaché à sa semaine. Les identifiants des sous-chapitres, des vidéos et des
+  // MyLab sont ceux d'avant : ce que tu as déjà coché est conservé.
+  var MA11_CHAPTERS = [
+    { k: 1, title: 'Rappels d’algèbre', weeks: [1] },
+    { k: 2, title: 'Équations et inéquations', weeks: [2] },
+    { k: 3, title: 'Fonctions et graphiques', weeks: [3, 4], split: 'Le programme regroupe les séances 3 et 4 : sous-chapitres du ch. 2 en semaine 3, du ch. 3 en semaine 4 (répartition proposée).' },
+    { k: 4, title: 'Fonctions exponentielles et logarithmes', weeks: [5] },
+    { k: 5, title: 'Limites et continuité', weeks: [6] },
+    { k: 6, title: 'Dérivation', weeks: [7, 8], split: 'Le programme regroupe les séances 7 et 8 : 11.1 à 11.3 en semaine 7, la suite en semaine 8 (répartition proposée).' },
+    { k: 7, title: 'Extremums et étude de courbes', weeks: [9] },
+    { k: 8, title: 'Calcul matriciel', weeks: [10, 11], split: 'Le programme regroupe les séances 10 et 11 : 6.1 à 6.3 en semaine 10, la suite en semaine 11 (répartition proposée).' }
+  ];
   function buildMA11() {
-    return MA11_WEEKS.map(function (w) {
-      var p = wid('MA11', w.n);
-      var list = workflow(p, { inClass: ['followup', 'seminar'], test: A(p + '-mylab', 'test', 'Devoir hebdomadaire MyLab ' + w.n + '/11 (5 à 10 questions)', 45, { dueOffset: 7, dueTime: '08:00', dueSrc: 'Ta routine : MyLab à rendre le lundi — vérifie l’heure exacte sur MyLab', weight: '10 % (les 11 devoirs)' }) });
-      w.sections.forEach(function (s, i) {
-        list.push(reading(p + '-sec' + (i + 1), 'Lire dans le manuel : section ' + s[0], s[1], { prereq: i === 0 ? [] : [p + '-sec' + i] }));
+    var byWeek = {}; MA11_WEEKS.forEach(function (w) { byWeek[w.n] = w; });
+    return MA11_CHAPTERS.map(function (ch) {
+      var w0 = ch.weeks[0], c = 'MA11-c' + ch.k, p0 = wid('MA11', w0), prev, step = 0, list = [];
+      function add(x) { x.step = ++step; if (!x.prereq) x.prereq = prev ? [prev] : []; list.push(x); prev = x.id; }
+      add(A(c + '-reallife', 'reallife', 'Recherche : à quoi sert ce chapitre dans la vraie vie', 20, { calWeek: w0 }));
+      add(A(c + '-pearson-read', 'reading', 'Lire le chapitre dans Pearson', 45, { calWeek: w0 }));
+      add(A(c + '-pearson-ex', 'practice', 'Faire les exercices Pearson', 45, { calWeek: w0 }));
+      add(A(p0 + '-video', 'video', 'Regarder la vidéo du prof', 35, { calWeek: w0, src: 'Syllabus : cours préenregistré à voir avant la séance' }));
+      var topics = [], notes = [];
+      ch.weeks.forEach(function (n) {
+        var w = byWeek[n], p = wid('MA11', n);
+        if (w.note) notes.push(w.note);
+        w.sections.forEach(function (sec, i) {
+          add(A(p + '-sec' + (i + 1), 'section', sec[0], sec[1], { calWeek: n }));
+          topics.push(sec[0]);
+        });
       });
-      if (w.revision) list.push(A(p + '-rev', 'revision', 'Séance de révision (avant l’examen final)', 90, { syllabus: true, src: 'Syllabus : séance de révision puis examen final' }));
-      return { n: w.n, title: w.title, chapter: w.chapter, note: w.note, flags: w.split ? [w.split] : [], topics: w.sections.map(function (s) { return s[0]; }), activities: list };
+      ch.weeks.forEach(function (n) {
+        var p = wid('MA11', n);
+        list.push(A(p + '-mylab', 'test', 'Devoir hebdomadaire MyLab ' + n + '/11 (5 à 10 questions)', 45, { calWeek: n, prereq: [], dueOffset: 7, dueTime: '08:00', syllabus: true,
+          dueSrc: 'Ta routine : MyLab à rendre le lundi — vérifie l’heure exacte sur MyLab', weight: '10 % (les 11 devoirs)' }));
+        if (byWeek[n].revision) list.push(A(p + '-rev', 'revision', 'Séance de révision (avant l’examen final)', 90, { calWeek: n, syllabus: true, src: 'Syllabus : séance de révision puis examen final' }));
+      });
+      return { n: ch.k, calWeek: w0, span: ch.weeks, label: 'Ch. ' + ch.k, title: 'Chapitre ' + ch.k + ' — ' + ch.title,
+        chapter: byWeek[w0].chapter, note: notes.join(' '), flags: ch.split ? [ch.split] : [], topics: topics, activities: list };
     });
   }
 
@@ -331,7 +362,7 @@
   // avant lequel la préparation de la semaine est visée — un objectif, jamais une deadline.
   var SUBJECTS = [
     // color = pastel principal, soft = fond très clair, ink = texte lisible sur ces fonds.
-    { id: 'MA11', name: 'Fondamentaux des mathématiques 1', short: 'Maths', color: '#EBA3BA', soft: '#F9DDE6', ink: '#9E4F6B', sequential: true, prepOffset: 6, prepDays: [4, 6, 0, 1, 2, 3, 5], ects: 6,
+    { id: 'MA11', name: 'Fondamentaux des mathématiques 1', short: 'Maths', byChapter: true, color: '#EBA3BA', soft: '#F9DDE6', ink: '#9E4F6B', sequential: true, prepOffset: 6, prepDays: [4, 6, 0, 1, 2, 3, 5], ects: 6,
       books: ['Haeussler, Paul & Wood — « Introductory Mathematical Analysis » (14e éd.) : le manuel officiel du cours'],
       prepNote: 'Objectif : semaine bouclée avant le MyLab du lundi suivant.' },
     { id: 'EC11', name: 'Microéconomie', short: 'Micro', color: '#C4ADE0', soft: '#ECE3F6', ink: '#76579B', sequential: true, prepOffset: 5, prepDays: [5, 1, 3, 6], ects: 6,
