@@ -45,6 +45,7 @@
 
   // Le programme décidé ensemble (novembre 2026). Les jours des fiches sont une proposition :
   // chaque tâche peut être déplacée, renommée ou supprimée dans l'app.
+  var EC_SPLIT = [2, 2, 3, 2], IR_SPLIT = [2, 2, 2, 3];
   function seedPlan() {
     var tasks = [];
     function block(subject, prefix, days, fichesPerDay) {
@@ -53,17 +54,18 @@
         for (var k = 0; k < count; k++, n++) tasks.push({ id: prefix + '-f' + n, subject: subject, type: 'fiche', title: 'Fiche ' + n, date: days[i] });
       });
       var last = days[days.length - 1];
-      tasks.push({ id: prefix + '-exos', subject: subject, type: 'exos', title: 'Séance d’exercices sur les fiches', date: last });
       tasks.push({ id: prefix + '-flash', subject: subject, type: 'flash', title: 'Flashcards', date: last });
     }
     // Vendredi 13 : Microeconomics + maths.
     tasks.push({ id: 'ec-13', subject: 'EC11', type: 'session', title: 'Révision de Microeconomics', date: '2026-11-13' });
-    // Business : samedi 14 → mercredi 18 (dernier délai), 9 fiches puis exercices + flashcards.
+    // Séances d'exercices : pas pour l'instant (elles viendront plus tard). En semaine, 2 fiches par jour maximum.
+    // Business : samedi 14 → mercredi 18 (dernier délai), 9 fiches puis flashcards.
     block('MG11', 'mg', ['2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18'], [2, 2, 2, 2, 1]);
-    // Microeconomics : jeudi 19 → dimanche 22, 9 fiches puis exercices + flashcards.
-    block('EC11', 'ec', ['2026-11-19', '2026-11-20', '2026-11-21', '2026-11-22'], [3, 3, 3]);
+    // Microeconomics : jeudi 19 → dimanche 22 : 2 + 2 en semaine, 3 + 2 le week-end, puis flashcards.
+    block('EC11', 'ec', ['2026-11-19', '2026-11-20', '2026-11-21', '2026-11-22'], EC_SPLIT);
     // International Relations : lundi 23 → jeudi 26. Nombre de fiches pas encore confirmé (9 par défaut).
-    block('IR11', 'ir', ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26'], [3, 3, 3]);
+    // Que des jours de semaine : 2 par jour ; la 9e fiche tombe le jeudi 26 (à confirmer avec le vrai nombre).
+    block('IR11', 'ir', ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26'], IR_SPLIT);
 
     var plan = {
       v: 1,
@@ -107,9 +109,25 @@
       weekendMaths(plan);
       plan.v = 2;
     }
+    migrate3(plan);
     return plan;
   }
-  function needsMigration(plan) { return (plan.v || 1) < 2; }
+  // v3 (12 nov.) : pas de séance d'exercices pour l'instant ; Microeconomics et International Relations
+  // à 2 fiches par jour en semaine (plus le week-end).
+  function respread(plan, prefix, days, split) {
+    var n = 1;
+    split.forEach(function (count, i) {
+      for (var k = 0; k < count; k++, n++) plan.tasks.forEach(function (t) { if (t.id === prefix + '-f' + n) t.date = days[i]; });
+    });
+  }
+  function migrate3(plan) {
+    if ((plan.v || 1) >= 3) return;
+    plan.tasks = plan.tasks.filter(function (t) { return ['mg-exos', 'ec-exos', 'ir-exos'].indexOf(t.id) === -1; });
+    respread(plan, 'ec', ['2026-11-19', '2026-11-20', '2026-11-21', '2026-11-22'], EC_SPLIT);
+    respread(plan, 'ir', ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26'], IR_SPLIT);
+    plan.v = 3;
+  }
+  function needsMigration(plan) { return (plan.v || 1) < 3; }
 
   function subjectById(plan, id) {
     for (var i = 0; i < plan.subjects.length; i++) if (plan.subjects[i].id === id) return plan.subjects[i];
@@ -229,12 +247,13 @@
       var n = +a.fiches || 0, days = [];
       if (a.from && a.to) for (var d = a.from; d <= a.to; d = addDays(d, 1)) days.push(d);
       if (!days.length) return;
-      var ficheDays = days.length > 1 ? days.slice(0, -1) : days;
-      for (var i = 0; i < n; i++) plan.tasks.push({ id: uid('t'), subject: a.id, type: 'fiche', title: 'Fiche ' + (i + 1), date: ficheDays[Math.floor(i * ficheDays.length / n)] });
-      if (a.exos !== false) {
-        plan.tasks.push({ id: uid('t'), subject: a.id, type: 'exos', title: 'Séance d’exercices sur les fiches', date: days[days.length - 1] });
-        plan.tasks.push({ id: uid('t'), subject: a.id, type: 'flash', title: 'Flashcards', date: days[days.length - 1] });
-      }
+      // 2 fiches par jour en semaine, 3 le week-end ; s'il en reste, on complète jour après jour.
+      var cap = days.map(function (x) { var wd = parseDay(x).getDay(); return wd === 0 || wd === 6 ? 3 : 2; }), count = days.map(function () { return 0; }), left = n;
+      days.forEach(function (x, k) { var c = Math.min(cap[k], left); count[k] = c; left -= c; });
+      for (var k = 0; left > 0; k = (k + 1) % days.length, left--) count[k]++;
+      var f = 1;
+      days.forEach(function (x, k) { for (var q = 0; q < count[k]; q++, f++) plan.tasks.push({ id: uid('t'), subject: a.id, type: 'fiche', title: 'Fiche ' + f, date: x }); });
+      plan.tasks.push({ id: uid('t'), subject: a.id, type: 'flash', title: 'Flashcards', date: days[days.length - 1] });
     },
     removeSubject: function (plan, a) {
       plan.subjects = plan.subjects.filter(function (s) { return s.id !== a.id; });
