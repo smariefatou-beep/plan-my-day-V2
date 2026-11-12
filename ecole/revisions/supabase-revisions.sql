@@ -2,8 +2,6 @@
 -- À coller dans Supabase : Project > SQL Editor > New query > Run (une seule fois).
 -- Ne touche pas à kv_store : le reste de Plan My Life / École OS reste privé.
 
-create extension if not exists pgcrypto;
-
 -- Le planning commun (matières, tâches, dates, routine maths de 20 h).
 create table if not exists rev_plans (
   id uuid primary key default gen_random_uuid(),
@@ -71,7 +69,7 @@ declare pid uuid; code text;
 begin
   if auth.uid() is null then raise exception 'non connectée'; end if;
   loop
-    code := upper(substr(translate(encode(gen_random_bytes(8), 'base64'), '+/=0O1Il', ''), 1, 6));
+    code := upper(substr(translate(md5(random()::text || clock_timestamp()::text), '01', ''), 1, 6));
     exit when length(code) = 6 and not exists (select 1 from rev_plans p where p.invite_code = code);
   end loop;
   insert into rev_plans (owner, invite_code, data, updated_by) values (auth.uid(), code, plan_data, auth.uid()) returning rev_plans.id into pid;
@@ -96,3 +94,6 @@ end; $$;
 grant execute on function create_rev_plan(jsonb, text) to authenticated;
 grant execute on function join_rev_plan(text, text) to authenticated;
 grant execute on function is_rev_member(uuid) to authenticated;
+
+-- Fait connaître les nouvelles tables à l'API tout de suite.
+notify pgrst, 'reload schema';
