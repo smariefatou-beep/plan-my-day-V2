@@ -21,7 +21,7 @@ ok(w.bonuses.join() === 'MG11', 'bonus Business');
 ok(P.subjectProgress(plan, prog, 'MG11', '2026-11-13').pct === 100, 'Business 100 %');
 var mp = P.subjectProgress(plan, prog, 'MA11', '2026-11-13');
 ok(mp.total === 14 && mp.done === 1, 'maths 1/14 : ' + mp.done + '/' + mp.total);
-ok(P.leftovers(plan, prog, '2026-11-15').map(function (t) { return t.id; }).join() === 'ec-13', 'reste : la révision micro du 13');
+ok(P.leftovers(plan, prog, '2026-11-15').map(function (t) { return t.id; }).join() === 'ec-13,ma-we-2026-11-14', 'reste : la révision micro du 13');
 var p2 = P.apply(plan, { type: 'addSubject', id: 'SK11', name: 'Rhetoric', from: '2026-11-27', to: '2026-11-29', fiches: 4 });
 ok(p2.tasks.filter(function (t) { return t.subject === 'SK11'; }).length === 6 && plan.subjects.length === 4, 'ajout matière sans toucher l’original');
 ok(P.day(p2, '2026-11-29').tasks.filter(function (t) { return t.subject === 'SK11'; }).length === 2, 'exos+flash le dernier jour');
@@ -33,3 +33,12 @@ ok(p4.tasks.filter(function (t) { return t.id === 'x1'; })[0].type === 'exos', '
 var p5 = P.apply(p4, { type: 'editTask', id: 'x1', kind: 'flash' });
 ok(p5.tasks.filter(function (t) { return t.id === 'x1'; })[0].type === 'flash', 'type modifiable');
 print(n - fails + '/' + n + ' tests OK');
+// v2 : maths 1 h en semaine seulement, tâche « Maths » le week-end
+var v2 = P.seedPlan();
+ok(P.day(v2, '2026-11-14').routines.length === 0 && P.day(v2, '2026-11-14').tasks.some(function (t) { return t.type === 'maths'; }), 'samedi : tâche maths, pas de 1 h');
+ok(P.day(v2, '2026-11-16').routines.length === 1 && !P.day(v2, '2026-11-16').tasks.some(function (t) { return t.type === 'maths'; }), 'lundi : 1 h de maths');
+ok(v2.tasks.filter(function (t) { return t.type === 'maths'; }).map(function (t) { return t.date; }).join() === '2026-11-14,2026-11-15,2026-11-21,2026-11-22', 'week-ends 14-15 et 21-22');
+var old = JSON.parse(JSON.stringify(v2)); old.v = 1; old.tasks = old.tasks.filter(function (t) { return t.type !== 'maths'; }); delete old.routines[0].days;
+ok(P.needsMigration(old) && !P.needsMigration(P.apply(old, { type: 'migrate' })), 'migration');
+ok(P.apply(P.apply(old, { type: 'migrate' }), { type: 'migrate' }).tasks.length === v2.tasks.length, 'migration une seule fois');
+print('v2 : ' + (n - fails) + '/' + n);

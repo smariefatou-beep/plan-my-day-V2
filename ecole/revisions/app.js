@@ -9,7 +9,7 @@
 
   var DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   var MONTHS_L = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-  var ICON_OF = { fiche: 'fiches', exos: 'practice', flash: 'revision', session: 'understand', other: 'mine' };
+  var ICON_OF = { fiche: 'fiches', exos: 'practice', flash: 'revision', session: 'understand', maths: 'practice', other: 'mine' };
   var CHECK = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#6D4D57" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var XMARK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
   var NUDGES = ['Maths faites pour moi !', 'On s’y met ?', 'Courage, on y est presque', 'Je commence un peu plus tard ce soir'];
@@ -61,6 +61,7 @@
     return API.load(planId).then(function (r) {
       row = r.plan; data = r.plan.data; members = r.members; progress = r.progress || {};
       cache();
+      if (P.needsMigration(data)) { data = P.apply(data, { type: 'migrate' }); API.applyOp(planId, { type: 'migrate' }, me.id).then(function (next) { data = next; cache(); render(); }).catch(function () {}); }
     });
   }
   function refresh() { if (!planId) return; load().then(render).catch(function () {}); }
@@ -111,7 +112,7 @@
     var fdone = fp && P.routineDone(fp, today, r.id);
     var myNote = (myProg().notes[today] || {}).text, fNote = fp && (fp.notes[today] || {}).text;
     var h = '<div class="card maths-card" style="' + vars(s) + '"><div class="mc-top"><div class="mc-time">' + hour(r.time) + '</div>' +
-      '<div class="mc-txt"><span class="t-subj">' + esc(s.name) + '</span><div class="t-title">' + esc(r.title) + ', tous les jours</div><div class="mc-sub">+' + money(r.pay != null ? r.pay : P.ROUTINE_PAY) + ' à chaque fois</div></div>' +
+      '<div class="mc-txt"><span class="t-subj">' + esc(s.name) + '</span><div class="t-title">' + esc(r.title) + ', du lundi au vendredi</div><div class="mc-sub">+' + money(r.pay != null ? r.pay : P.ROUTINE_PAY) + ' à chaque fois</div></div>' +
       '<div class="mc-check">' + stone(mine, 'routine', r.id, r.title) + '</div></div>';
     h += '<div class="mc-duo"><div class="mc-who' + (mine ? ' ok' : '') + '"><b>' + esc(myName()) + '</b><span>' + (mine ? 'fait' : 'pas encore') + '</span></div>';
     if (f) h += '<div class="mc-who' + (fdone ? ' ok' : '') + '"><b>' + esc(fname()) + '</b><span>' + (fdone ? 'fait' : 'pas encore') + '</span></div>';
@@ -144,8 +145,10 @@
   function viewToday() {
     var d = P.day(data, today), ph = currentPhase(), mp = myProg();
     var left = d.tasks.filter(function (t) { return !mp.done[t.id]; }).length;
-    var phaseTxt = ph.now.length ? ph.now.map(function (w) { return subj(w.subject).name; }).concat(d.routines.length ? [subj(d.routines[0].subject).name] : []).join(' + ') +
-      ' · jusqu’à ' + niceDay(ph.now[0].to) : (ph.next ? 'Prochaine étape : ' + subj(ph.next.subject).name + ' à partir de ' + niceDay(ph.next.from) : 'Maths tous les jours à 20 h');
+    var todaySubs = ph.now.map(function (w) { return w.subject; });
+    d.tasks.concat(d.routines).forEach(function (x) { if (todaySubs.indexOf(x.subject) === -1) todaySubs.push(x.subject); });
+    var phaseTxt = ph.now.length ? todaySubs.map(function (id) { return subj(id).name; }).join(' + ') +
+      ' · jusqu’à ' + niceDay(ph.now[0].to) : (ph.next ? 'Prochaine étape : ' + subj(ph.next.subject).name + ' à partir de ' + niceDay(ph.next.from) : 'Maths du lundi au vendredi à 20 h');
     var h = '<section class="hello"><div><div class="date">' + longDate(today) + '</div><div class="sub">' + esc(phaseTxt) + '</div>' +
       '<div class="today-actions"><button class="btn soft" data-a="add" data-date="' + today + '">' + ART.icon('plus', null, 16) + ' Ajouter une tâche</button></div></div>' + walletChip() + '</section>';
     ph.now.forEach(function (w) { var fl = (data.flags || {})[w.subject]; if (fl) h += '<div class="flag">' + esc(subj(w.subject).name) + ' : ' + esc(fl) + ' <a href="#" class="btn-link" data-a="go" data-view="plan">Ajuster</a></div>'; });
@@ -164,7 +167,8 @@
       if (lo.length > 8) h += '<p class="garden-note">… et ' + (lo.length - 8) + ' autres dans Planning.</p>';
     }
     h += '</div><div>';
-    h += '<div class="section-h"><h3>Le rendez-vous de 20 h</h3></div>' + mathsCard() + friendToday();
+    var mc = mathsCard();
+    h += (mc ? '<div class="section-h"><h3>Le rendez-vous de ' + hour(d.routines[0].time) + '</h3></div>' + mc : '') + friendToday();
     return h + '</div></div>';
   }
 
@@ -182,7 +186,7 @@
         (today >= from && today <= to ? '<b class="fr-today" style="left:' + ((x(today) + .5) / span * 100) + '%"></b>' : '') + '</div></div>';
     });
     var r = (data.routines || [])[0];
-    if (r) h += '<div class="fr-row"><span class="fr-name">' + esc(subj(r.subject).name) + '</span><div class="fr-track"><i style="left:' + (Math.max(0, x(r.from)) / span * 100) + '%;width:' + (100 - Math.max(0, x(r.from)) / span * 100) + '%;' + vars(subj(r.subject)) + '"><span>tous les jours à ' + hour(r.time) + '</span></i></div></div>';
+    if (r) h += '<div class="fr-row"><span class="fr-name">' + esc(subj(r.subject).name) + '</span><div class="fr-track"><i style="left:' + (Math.max(0, x(r.from)) / span * 100) + '%;width:' + (100 - Math.max(0, x(r.from)) / span * 100) + '%;' + vars(subj(r.subject)) + '"><span>' + hour(r.time) + ' en semaine · le week-end en tâche</span></i></div></div>';
     return h + '</div>';
   }
 
@@ -208,7 +212,7 @@
       day.routines.forEach(function (r) {
         var s = subj(r.subject), done = P.routineDone(mp, d, r.id);
         h += '<div class="wtask routine' + (done ? ' done' : '') + '" style="' + vars(s) + '">' + stone(done, 'routine', r.id, r.title, ' data-date="' + d + '"').replace('class="stone', 'class="stone mini') +
-          '<span class="w-body"><span class="w-title">' + esc(r.title) + '</span><span class="w-meta">' + hour(r.time) + ' · tous les jours</span></span></div>';
+          '<span class="w-body"><span class="w-title">' + esc(r.title) + '</span><span class="w-meta">' + hour(r.time) + ' · du lundi au vendredi</span></span></div>';
       });
       h += '<div class="w-foot"><span></span><button class="add-day" data-a="add" data-date="' + d + '">+ Ajouter</button></div></div>';
     }
@@ -264,8 +268,8 @@
     h += '<div class="section-h"><h3>Inviter</h3></div><div class="card"><p class="soft-note">Envoie ce lien à ta copine. Elle crée son compte (email + mot de passe), puis elle voit uniquement ce planning et sa propre progression.</p>' +
       '<div class="code-row"><span class="code">' + esc(row.invite_code) + '</span><button class="btn small" data-a="copy">Copier le lien</button></div><p class="garden-note" style="word-break:break-all;">' + esc(inviteLink()) + '</p>' +
       '<p class="garden-note">Dans le groupe : ' + members.map(function (x) { return esc(x.name || '…'); }).join(', ') + '</p></div>';
-    if (r) h += '<div class="section-h"><h3>Maths de tous les jours</h3></div><div class="card"><div class="form-row"><label><b>Heure</b></label><input class="inp" type="time" id="rtime" value="' + esc(r.time || '20:00') + '"></div>' +
-      '<div class="form-row"><label><b>Dernier jour</b><small>Vide = tous les jours, sans fin</small></label><input class="inp" type="date" id="rto" value="' + esc(r.to || '') + '"></div></div>';
+    if (r) h += '<div class="section-h"><h3>Maths du lundi au vendredi</h3></div><div class="card"><div class="form-row"><label><b>Heure</b></label><input class="inp" type="time" id="rtime" value="' + esc(r.time || '20:00') + '"></div>' +
+      '<div class="form-row"><label><b>Dernier jour</b><small>Vide = sans fin. Le week-end, les maths sont une tâche du planning.</small></label><input class="inp" type="date" id="rto" value="' + esc(r.to || '') + '"></div></div>';
     h += '</div><div>';
     h += '<div class="section-h"><h3>Ajouter une matière</h3></div><div class="card add-subj">' +
       '<div class="field"><input class="inp" id="ns-name" placeholder="ex. Rhetoric" style="width:100%"></div>' +
@@ -274,7 +278,7 @@
       '<p class="garden-note">Les fiches se répartissent sur les jours, puis la séance d’exercices et les flashcards le dernier jour.</p><button class="btn" data-a="add-subject">Ajouter au planning</button></div>';
     h += '<div class="section-h"><h3>Matières</h3></div><div class="card">' + data.subjects.map(function (s) {
       var w = (data.windows || {})[s.id];
-      return '<div class="form-row" style="' + vars(s) + '"><label><span class="t-subj">' + esc(s.name) + '</span><small>' + (w ? shortDay(w.from) + ' → ' + shortDay(w.to) + ' · ' : '') + (s.id === 'MA11' && !data.tasks.some(function (t) { return t.subject === 'MA11'; }) ? '1 h tous les jours à ' + hour(((data.routines || [])[0] || {}).time) : data.tasks.filter(function (t) { return t.subject === s.id; }).length + ' tâches') + '</small></label>' +
+      return '<div class="form-row" style="' + vars(s) + '"><label><span class="t-subj">' + esc(s.name) + '</span><small>' + (w ? shortDay(w.from) + ' → ' + shortDay(w.to) + ' · ' : '') + (s.id === 'MA11' ? '1 h en semaine à ' + hour(((data.routines || [])[0] || {}).time) + ' · ' : '') + data.tasks.filter(function (t) { return t.subject === s.id; }).length + ' tâches' + '</small></label>' +
         (s.id === 'MA11' ? '' : '<button class="btn soft small" data-a="del-subject" data-id="' + esc(s.id) + '">Retirer</button>') + '</div>';
     }).join('') + '</div>';
     h += '<p class="garden-note" style="margin-top:16px;"><a href="#" class="btn-link" data-a="leave">Quitter ce planning</a> (tes coches disparaissent, le planning reste pour l’autre).</p>';
@@ -428,7 +432,7 @@
     var t = e.target; if (!data) return;
     if (t.id === 'myname' && t.value.trim()) { var nm = t.value.trim(); members.forEach(function (x) { if (x.user_id === me.id) x.name = nm; }); API.rename(planId, me.id, nm).then(function () { toast('Prénom enregistré'); }); }
     if (t.id === 'rtime' && t.value) change({ type: 'editRoutine', id: data.routines[0].id, time: t.value }, 'Heure des maths : ' + t.value);
-    if (t.id === 'rto') change({ type: 'editRoutine', id: data.routines[0].id, to: t.value || null }, t.value ? 'Maths jusqu’au ' + niceDay(t.value) : 'Maths tous les jours, sans fin');
+    if (t.id === 'rto') change({ type: 'editRoutine', id: data.routines[0].id, to: t.value || null }, t.value ? 'Maths jusqu’au ' + niceDay(t.value) : 'Maths en semaine, sans fin');
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
 

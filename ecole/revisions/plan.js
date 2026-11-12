@@ -26,6 +26,7 @@
     exos: { label: 'Séance d’exercices', pay: 10 },
     flash: { label: 'Flashcards', pay: 5 },
     session: { label: 'Révision', pay: 7 },
+    maths: { label: 'Maths', pay: 10 },
     other: { label: 'Mon ajout', pay: 5 }
   };
   var SUBJECT_BONUS = 20;   // quand toutes les tâches d'une matière sont faites
@@ -64,7 +65,7 @@
     // International Relations : lundi 23 → jeudi 26. Nombre de fiches pas encore confirmé (9 par défaut).
     block('IR11', 'ir', ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26'], [3, 3, 3]);
 
-    return {
+    var plan = {
       v: 1,
       title: 'Nos révisions',
       subjects: [
@@ -84,7 +85,31 @@
         { id: 'maths20', subject: 'MA11', title: '1 h de maths', time: '20:00', mins: 60, from: '2026-11-13', to: null }
       ]
     };
+    return migrate(plan);
   }
+
+  // v2 (12 nov.) : la 1 h de maths de 20 h, c'est seulement du lundi au vendredi. Le week-end,
+  // les maths deviennent une tâche « Maths » dans le chemin du jour, sans durée fixe.
+  function weekendMaths(plan) {
+    var r = (plan.routines || []).filter(function (x) { return x.id === 'maths20'; })[0];
+    var rg = dateRange(plan);
+    if (!r || !rg) return;
+    for (var d = r.from; d <= rg.to; d = addDays(d, 1)) {
+      var wd = parseDay(d).getDay();
+      if (wd !== 0 && wd !== 6) continue;
+      var id = 'ma-we-' + d;
+      if (!plan.tasks.some(function (t) { return t.id === id; })) plan.tasks.push({ id: id, subject: 'MA11', type: 'maths', title: 'Maths', date: d });
+    }
+  }
+  function migrate(plan) {
+    if ((plan.v || 1) < 2) {
+      (plan.routines || []).forEach(function (r) { if (r.id === 'maths20') r.days = [1, 2, 3, 4, 5]; });
+      weekendMaths(plan);
+      plan.v = 2;
+    }
+    return plan;
+  }
+  function needsMigration(plan) { return (plan.v || 1) < 2; }
 
   function subjectById(plan, id) {
     for (var i = 0; i < plan.subjects.length; i++) if (plan.subjects[i].id === id) return plan.subjects[i];
@@ -217,6 +242,7 @@
       if (plan.windows) delete plan.windows[a.id];
     },
     setWindow: function (plan, a) { plan.windows = plan.windows || {}; plan.windows[a.subject] = { from: a.from, to: a.to }; },
+    migrate: function (plan) { migrate(plan); },
     clearFlag: function (plan, a) { if (plan.flags) delete plan.flags[a.subject]; },
     editRoutine: function (plan, a) { (plan.routines || []).forEach(function (r) { if (r.id === a.id) { ['title', 'time', 'from', 'to'].forEach(function (k) { if (k in a) r[k] = a[k]; }); } }); }
   };
@@ -229,7 +255,7 @@
   root.RevPlan = {
     TYPES: TYPES, SUBJECT_BONUS: SUBJECT_BONUS, ROUTINE_PAY: ROUTINE_PAY, PALETTE: PALETTE,
     dayStr: dayStr, parseDay: parseDay, addDays: addDays, uid: uid,
-    seedPlan: seedPlan, subjectById: subjectById, typeOf: typeOf, payOf: payOf,
+    seedPlan: seedPlan, needsMigration: needsMigration, subjectById: subjectById, typeOf: typeOf, payOf: payOf,
     emptyProgress: emptyProgress, norm: norm, isDone: isDone, routineDone: routineDone, routineOn: routineOn,
     day: day, leftovers: leftovers, dateRange: dateRange, subjectProgress: subjectProgress, wallet: wallet, windows: windows,
     apply: apply
