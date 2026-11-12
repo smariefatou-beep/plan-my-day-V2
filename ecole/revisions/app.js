@@ -153,7 +153,10 @@
     h += '<div class="grid-2"><div>';
     h += '<div class="section-h"><h3>Le chemin du jour</h3><span class="aside">' + (d.tasks.length ? (left ? left + ' à faire' : 'tout est fait') : '') + '</span></div>';
     if (d.tasks.length) h += '<div class="trail snake">' + d.tasks.map(function (t) { return taskRow(t); }).join('') + '</div>';
-    else h += '<div class="card empty">' + ART.plant(3, '#F2B6C8') + '<br>Pas de fiche aujourd’hui. Juste les maths de 20 h.</div>';
+    else {
+      var nx = data.tasks.filter(function (t) { return t.date > today; }).map(function (t) { return t.date; }).sort()[0];
+      h += '<div class="card empty">' + ART.plant(3, '#F2B6C8') + '<br>Pas de fiche aujourd’hui' + (d.routines.length ? ', juste les maths de 20 h.' : '.') + (nx ? '<br>On commence ' + niceDay(nx) + ' : <a href="#" class="btn-link" data-a="go" data-view="plan">voir le planning</a>' : '') + '</div>';
+    }
     var lo = P.leftovers(data, mp, today);
     if (lo.length) {
       h += '<div class="gentle" style="margin-top:16px;"><h4>Des jours d’avant</h4><p>Pas encore cochées. Si c’est fait, coche-les ; sinon, glisse-les sur un autre jour, tranquillement.</p></div>';
@@ -271,7 +274,7 @@
       '<p class="garden-note">Les fiches se répartissent sur les jours, puis la séance d’exercices et les flashcards le dernier jour.</p><button class="btn" data-a="add-subject">Ajouter au planning</button></div>';
     h += '<div class="section-h"><h3>Matières</h3></div><div class="card">' + data.subjects.map(function (s) {
       var w = (data.windows || {})[s.id];
-      return '<div class="form-row" style="' + vars(s) + '"><label><span class="t-subj">' + esc(s.name) + '</span><small>' + (w ? shortDay(w.from) + ' → ' + shortDay(w.to) + ' · ' : '') + data.tasks.filter(function (t) { return t.subject === s.id; }).length + ' tâches</small></label>' +
+      return '<div class="form-row" style="' + vars(s) + '"><label><span class="t-subj">' + esc(s.name) + '</span><small>' + (w ? shortDay(w.from) + ' → ' + shortDay(w.to) + ' · ' : '') + (s.id === 'MA11' && !data.tasks.some(function (t) { return t.subject === 'MA11'; }) ? '1 h tous les jours à ' + hour(((data.routines || [])[0] || {}).time) : data.tasks.filter(function (t) { return t.subject === s.id; }).length + ' tâches') + '</small></label>' +
         (s.id === 'MA11' ? '' : '<button class="btn soft small" data-a="del-subject" data-id="' + esc(s.id) + '">Retirer</button>') + '</div>';
     }).join('') + '</div>';
     h += '<p class="garden-note" style="margin-top:16px;"><a href="#" class="btn-link" data-a="leave">Quitter ce planning</a> (tes coches disparaissent, le planning reste pour l’autre).</p>';
