@@ -183,11 +183,9 @@
     var h = '<div class="frise card">';
     ws.forEach(function (w) {
       var s = subj(w.subject), l = x(w.from) / span * 100, wd = (x(w.to) - x(w.from) + 1) / span * 100;
-      h += '<div class="fr-row"><span class="fr-name">' + esc(s.name) + '</span><div class="fr-track"><i style="left:' + l + '%;width:' + wd + '%;' + vars(s) + '"><span>' + shortDay(w.from) + ' → ' + shortDay(w.to) + '</span></i>' +
+      h += '<div class="fr-row"><span class="fr-name">' + esc(s.name) + '</span><div class="fr-track"><i style="left:' + l + '%;width:' + wd + '%;' + vars(s) + '"><span>' + (w.daily ? 'tous les jours · ' : '') + shortDay(w.from) + ' → ' + shortDay(w.to) + '</span></i>' +
         (today >= from && today <= to ? '<b class="fr-today" style="left:' + ((x(today) + .5) / span * 100) + '%"></b>' : '') + '</div></div>';
     });
-    var r = (data.routines || [])[0];
-    if (r) h += '<div class="fr-row"><span class="fr-name">' + esc(subj(r.subject).name) + '</span><div class="fr-track"><i style="left:' + (Math.max(0, x(r.from)) / span * 100) + '%;width:' + (100 - Math.max(0, x(r.from)) / span * 100) + '%;' + vars(subj(r.subject)) + '"><span>' + hour(r.time) + ' en semaine · le week-end en tâche</span></i></div></div>';
     return h + '</div>';
   }
 

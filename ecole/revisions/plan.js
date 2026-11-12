@@ -110,6 +110,7 @@
       plan.v = 2;
     }
     migrate3(plan);
+    migrate4(plan);
     return plan;
   }
   // v3 (12 nov.) : pas de séance d'exercices pour l'instant ; Microeconomics et International Relations
@@ -127,7 +128,14 @@
     respread(plan, 'ir', ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26'], IR_SPLIT);
     plan.v = 3;
   }
-  function needsMigration(plan) { return (plan.v || 1) < 3; }
+  // v4 : une seule ligne Maths dans la frise, tous les jours du samedi 14 au jeudi 26.
+  function migrate4(plan) {
+    if ((plan.v || 1) >= 4) return;
+    plan.windows = plan.windows || {};
+    plan.windows.MA11 = { from: '2026-11-14', to: '2026-11-26', daily: true };
+    plan.v = 4;
+  }
+  function needsMigration(plan) { return (plan.v || 1) < 4; }
 
   function subjectById(plan, id) {
     for (var i = 0; i < plan.subjects.length; i++) if (plan.subjects[i].id === id) return plan.subjects[i];
@@ -228,7 +236,7 @@
         var ds = plan.tasks.filter(function (t) { return t.subject === s.id; }).map(function (t) { return t.date; }).sort();
         w = ds.length ? { from: ds[0], to: ds[ds.length - 1] } : null;
       }
-      return w ? { subject: s.id, from: w.from, to: w.to } : null;
+      return w ? { subject: s.id, from: w.from, to: w.to, daily: !!w.daily } : null;
     }).filter(Boolean);
   }
 
