@@ -292,7 +292,22 @@
       h += '<button class="subj-card" style="' + vars(s) + '--p:' + (s.noSyllabus ? 0 : r.pct) + '" data-a="subject" data-id="' + s.id + '">' +
         '<div class="ring"><span>' + ART.symbol(s.id, s.color, 22) + '</span></div><div class="sc-main"><div class="sc-name">' + esc(s.short) + '</div><div class="sc-sub">' + sub + '</div></div>' + statusPill(s, r) + '</button>';
     });
-    return h + '</div></div>';
+    return h + '</div></div>' + revBlock();
+  }
+
+  // Révisions à deux : le planning partagé, sous la carte. Lit le résumé gardé par revisions/ (rev_cache).
+  function revBlock() {
+    var R = window.RevPlan, c = null;
+    try { c = JSON.parse(localStorage.getItem('rev_cache') || 'null'); } catch (e) {}
+    var h = '<div class="section-h"><h3>Révisions à deux</h3><span class="aside">planning partagé</span></div>';
+    if (!R || !c || !c.data) return h + '<a class="card rev-link" href="revisions/index.html">' + ART.icon('calendar', null, 30) + '<span><b>Ouvrir le planning de révisions</b><small>Un planning commun avec ta copine : elle ne voit que lui, jamais le reste de ton École OS.</small></span></a>';
+    var mine = R.norm((c.progress || {})[c.me]), fr = (c.members || []).filter(function (m) { return m.user_id !== c.me; })[0];
+    var fp = fr ? R.norm((c.progress || {})[fr.user_id]) : null, d = R.day(c.data, today);
+    var line = function (p) { var n = d.tasks.filter(function (t) { return p.done[t.id]; }).length, r = d.routines[0], out = []; if (d.tasks.length) out.push(n + '/' + d.tasks.length + ' tâches'); if (r) out.push('maths ' + (R.routineDone(p, today, r.id) ? 'faites' : 'pas encore')); return out.join(', ') || 'rien de prévu'; };
+    var subs = []; d.tasks.forEach(function (t) { if (subs.indexOf(t.subject) === -1) subs.push(t.subject); }); d.routines.forEach(function (r) { if (subs.indexOf(r.subject) === -1) subs.push(r.subject); });
+    h += '<a class="card rev-link" href="revisions/index.html">' + ART.icon('calendar', null, 30) + '<span><b>' + (subs.length ? 'Aujourd’hui : ' + subs.map(function (id) { return esc(R.subjectById(c.data, id).name); }).join(' + ') : 'Pas de révision prévue aujourd’hui') + '</b>' +
+      '<small>' + (subs.length ? 'Toi : ' + line(mine) + (fp ? ' · ' + esc(fr.name || 'ta copine') + ' : ' + line(fp) : '') + ' · ' : '') + (fp ? '' : 'ta copine n’a pas encore rejoint · ') + 'tirelire de révisions ' + money(R.wallet(c.data, mine).total) + '</small></span><span class="btn small">Ouvrir</span></a>';
+    return h;
   }
   function statusPill(s, r) {
     var map = { 'on-track': 'Dans les temps', watch: 'Un peu de retard', attention: 'Besoin d’attention', routine: 'Routines' };

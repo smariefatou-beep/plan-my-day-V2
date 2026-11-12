@@ -560,3 +560,10 @@ h2.title { font-weight: 400; font-size: 28px; letter-spacing: .06em; color: var(
 .w-del:hover { border-color: #F1C3CF; }
 .load-txt { font-size: 12px; }
 .w-foot { font-size: 12.5px; margin-top: 10px; }
+
+/* ---------------------------------------------------------------- Révisions à deux (sous la carte) */
+.rev-link { display: flex; gap: 12px; align-items: center; text-decoration: none; color: var(--ink); }
+.rev-link:hover { border-color: var(--rose-2); }
+.rev-link > span:not(.btn) { flex: 1; min-width: 0; }
+.rev-link b { display: block; font-size: 15px; }
+.rev-link small { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.5; margin-top: 2px; }

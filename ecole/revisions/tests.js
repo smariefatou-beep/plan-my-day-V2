@@ -1,0 +1,35 @@
+// Tests de la logique Révisions : jsc plan.js tests.js
+var P = this.RevPlan, fails = 0, n = 0;
+function ok(c, m) { n++; if (!c) { fails++; print('ÉCHEC : ' + m); } }
+var plan = P.seedPlan();
+ok(plan.tasks.filter(function (t) { return t.subject === 'MG11' && t.type === 'fiche'; }).length === 9, '9 fiches Business');
+ok(plan.tasks.filter(function (t) { return t.subject === 'EC11' && t.type === 'fiche'; }).length === 9, '9 fiches Micro');
+ok(plan.tasks.every(function (t) { return t.subject !== 'MG11' || (t.date >= '2026-11-14' && t.date <= '2026-11-18'); }), 'Business entre le 14 et le 18');
+ok(plan.tasks.every(function (t) { return t.subject !== 'EC11' || t.id === 'ec-13' || (t.date >= '2026-11-19' && t.date <= '2026-11-22'); }), 'Micro entre le 19 et le 22');
+ok(plan.tasks.every(function (t) { return t.subject !== 'IR11' || (t.date >= '2026-11-23' && t.date <= '2026-11-26'); }), 'IR entre le 23 et le 26');
+var d13 = P.day(plan, '2026-11-13');
+ok(d13.tasks.length === 1 && d13.tasks[0].subject === 'EC11' && d13.routines.length === 1, '13 : micro + maths');
+ok(P.day(plan, '2026-11-18').tasks.some(function (t) { return t.type === 'exos'; }), 'exos Business le 18');
+ok(P.day(plan, '2026-11-12').routines.length === 0, 'pas de maths avant le 13');
+ok(P.day(plan, '2026-11-30').routines.length === 1, 'maths tous les jours');
+var prog = P.emptyProgress();
+plan.tasks.filter(function (t) { return t.subject === 'MG11'; }).forEach(function (t) { prog.done[t.id] = 1; });
+prog.routines['2026-11-13'] = { maths20: 1 };
+var w = P.wallet(plan, prog);
+ok(w.total === 9 * 7 + 10 + 5 + 20 + 10, 'tirelire ' + w.total);
+ok(w.bonuses.join() === 'MG11', 'bonus Business');
+ok(P.subjectProgress(plan, prog, 'MG11', '2026-11-13').pct === 100, 'Business 100 %');
+var mp = P.subjectProgress(plan, prog, 'MA11', '2026-11-13');
+ok(mp.total === 14 && mp.done === 1, 'maths 1/14 : ' + mp.done + '/' + mp.total);
+ok(P.leftovers(plan, prog, '2026-11-15').map(function (t) { return t.id; }).join() === 'ec-13', 'reste : la révision micro du 13');
+var p2 = P.apply(plan, { type: 'addSubject', id: 'SK11', name: 'Rhetoric', from: '2026-11-27', to: '2026-11-29', fiches: 4 });
+ok(p2.tasks.filter(function (t) { return t.subject === 'SK11'; }).length === 6 && plan.subjects.length === 4, 'ajout matière sans toucher l’original');
+ok(P.day(p2, '2026-11-29').tasks.filter(function (t) { return t.subject === 'SK11'; }).length === 2, 'exos+flash le dernier jour');
+var p3 = P.apply(plan, { type: 'editTask', id: 'mg-f1', date: '2026-11-20', title: 'Fiche 1 · stratégie' });
+ok(p3.tasks.filter(function (t) { return t.id === 'mg-f1'; })[0].date === '2026-11-20', 'déplacer');
+ok(P.apply(plan, { type: 'removeTask', id: 'mg-f1' }).tasks.length === plan.tasks.length - 1, 'supprimer');
+var p4 = P.apply(plan, { type: 'addTask', id: 'x1', subject: 'MG11', kind: 'exos', title: 'Exos bonus', date: '2026-11-15' });
+ok(p4.tasks.filter(function (t) { return t.id === 'x1'; })[0].type === 'exos', 'type de tâche gardé à l’ajout');
+var p5 = P.apply(p4, { type: 'editTask', id: 'x1', kind: 'flash' });
+ok(p5.tasks.filter(function (t) { return t.id === 'x1'; })[0].type === 'flash', 'type modifiable');
+print(n - fails + '/' + n + ' tests OK');

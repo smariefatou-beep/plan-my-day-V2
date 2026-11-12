@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Révisions à deux · École OS</title>
+<meta name="theme-color" content="#F2C7D4">
+<link rel="icon" href="../../favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../../icon-180.png">
+<link href="https://fonts.cdnfonts.com/css/lemon-milk" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css?v=6">
+<link rel="stylesheet" href="revisions.css?v=1">
+</head>
+<body>
+
+<div id="sync-gate" style="position:fixed;inset:0;background:#fff;z-index:999999;display:flex;align-items:center;justify-content:center;"></div>
+<script src="../../sync.js?v=10"></script>
+
+<div class="app grain">
+  <header class="topbar">
+    <div class="brand">
+      <span id="brand-art"></span>
+      <div>
+        <div class="brand-name">Révisions</div>
+        <div class="brand-tag">à deux · École OS</div>
+      </div>
+    </div>
+    <a class="chip-btn" id="back-ecole" href="../index.html?view=subjects">← École OS</a>
+  </header>
+  <div class="sync-line"><span class="co-account-email"></span> · <span class="co-sync-status">…</span> · <a href="#" onclick="window.__coSignOut && window.__coSignOut();return false;">Déconnexion</a></div>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab on" data-view="today" data-ico="sun">Aujourd’hui</button>
+    <button class="tab" data-view="plan" data-ico="calendar">Planning</button>
+    <button class="tab" data-view="duo" data-ico="piggy">Nous deux</button>
+    <button class="tab" data-view="settings" data-ico="gear">Réglages</button>
+  </nav>
+
+  <main id="view"><div class="card empty" style="margin-top:20px;">Chargement du planning…</div></main>
+</div>
+
+<script src="../art.js?v=7"></script>
+<script src="plan.js?v=1"></script>
+<script src="api.js?v=1"></script>
+<script src="app.js?v=1"></script>
+<script>
+  // Ta copine n'a pas d'École OS : le bouton retour ne s'affiche que si tu en as un.
+  try { if (!localStorage.getItem('school_state')) document.getElementById('back-ecole').style.display = 'none'; } catch (e) {}
+</script>
+</body>
+</html>

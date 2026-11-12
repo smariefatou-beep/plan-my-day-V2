@@ -152,6 +152,8 @@
   function revealApp(session) {
     hideGate();
     window.__coUserEmail = session.user.email;
+    window.__coUser = session.user;
+    try { document.dispatchEvent(new CustomEvent('co-ready', { detail: session.user })); } catch (e) {}
     document.querySelectorAll('.co-account-email').forEach(function (el) {
       el.textContent = session.user.email;
     });
@@ -324,6 +326,7 @@
     loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2')
       .then(function () {
         var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.__coClient = client; // utilisé par École OS · Révisions (tables partagées rev_*)
         // With an expired token and an unreachable service, getSession keeps
         // retrying the refresh for a very long time: cap the wait.
         var timeout = new Promise(function (_, reject) {
