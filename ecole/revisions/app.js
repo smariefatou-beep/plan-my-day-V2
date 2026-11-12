@@ -24,6 +24,7 @@
   function subj(id) { return P.subjectById(data, id); }
   function vars(s) { return '--c:' + s.color + ';--cs:' + s.soft + ';--ci:' + s.ink + ';'; }
   function myProg() { return P.norm(progress[me.id]); }
+  function isOwner() { return !!(row && me && row.owner === me.id); }
   function friend() { return members.filter(function (x) { return x.user_id !== me.id; })[0] || null; }
   function friendProg() { var f = friend(); return f ? P.norm(progress[f.user_id]) : null; }
   function myName() { var x = members.filter(function (y) { return y.user_id === me.id; })[0]; return (x && x.name) || 'Moi'; }
@@ -257,6 +258,10 @@
     if (notes.length) {
       h += '<div class="section-h"><h3>Nos petits mots</h3></div><div class="card notes">' + notes.slice(0, 12).map(function (n) { return '<div class="note ' + (n.mine ? 'mine' : 'them') + '"><b>' + esc(n.who) + ' · ' + niceDay(n.d) + '</b> ' + esc(n.text) + '</div>'; }).join('') + '</div>';
     }
+    if (!isOwner()) {
+      h += '<div class="section-h"><h3>Toi</h3></div><div class="card"><div class="form-row"><label><b>Ton prénom</b><small>C’est ce que ' + esc(fname()) + ' voit</small></label><input class="inp" id="myname" value="' + esc(myName()) + '" style="width:160px;"></div>' +
+        '<p class="garden-note" style="margin-top:8px;"><a href="#" class="btn-link" data-a="leave">Quitter ce planning</a></p></div>';
+    }
     return h;
   }
 
@@ -353,6 +358,9 @@
     var tabs = document.getElementById('tabs');
     if (!data) { tabs.style.display = 'none'; v.innerHTML = '<div class="view">' + viewSetup(ui.code) + '</div>'; return; }
     tabs.style.display = '';
+    // Les réglages (inviter, matières, heure des maths) sont réservés à celle qui a créé le planning.
+    var setTab = tabs.querySelector('[data-view="settings"]'); if (setTab) setTab.style.display = isOwner() ? '' : 'none';
+    if (ui.view === 'settings' && !isOwner()) ui.view = 'today';
     var html = ui.view === 'plan' ? viewPlan() : ui.view === 'duo' ? viewDuo() : ui.view === 'settings' ? viewSettings() : viewToday();
     var y = window.scrollY;
     v.innerHTML = '<div class="view">' + html + '</div>';

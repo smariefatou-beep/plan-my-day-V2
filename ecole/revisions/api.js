@@ -61,7 +61,7 @@
     myPlans: function () { return Promise.resolve(mem.plan ? [{ plan_id: 'demo', name: 'Moi' }] : []); },
     load: function () { return Promise.resolve(JSON.parse(JSON.stringify(mem))); },
     create: function (data, name) {
-      mem.plan = { id: 'demo', owner: 'me', invite_code: 'DEMO42', data: data };
+      mem.plan = { id: 'demo', owner: /[?&]guest=1/.test(location.search) ? 'friend' : 'me', invite_code: 'DEMO42', data: data };
       mem.members = [{ user_id: 'me', name: name }, { user_id: 'friend', name: 'Ta copine' }];
       var fp = P.emptyProgress();
       data.tasks.slice(0, 3).forEach(function (t) { fp.done[t.id] = 1; });
