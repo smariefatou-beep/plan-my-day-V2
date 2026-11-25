@@ -71,8 +71,13 @@
     return h + '</div>';
   }
 
+  // Quand la page se redessine (après un clic ou un déplacement), on garde l'endroit où tu étais :
+  // la position de la page et celle de la liste « À cocher » (qui défile à part sur ordinateur).
+  var keep = null;
   function render(c) {
     ctx = c;
+    var oldList = document.querySelector('.rs-list');
+    keep = oldList ? { list: oldList.scrollTop, page: window.scrollY } : null;
     var all = P.tasks(ctx.C, solo()), done = all.filter(function (t) { return t.done; }).length, planned = all.filter(function (t) { return t.date; }).length;
     var h = '<button class="chip-btn" data-a="go" data-view="subjects">' + ctx.ART.icon('back', null, 14) + ' La carte</button>' +
       '<h2 class="title" style="margin-top:12px;">Mon planning de révision</h2>' +
@@ -164,6 +169,12 @@
   }
   function mount(c) {
     ctx = c;
+    if (keep) {
+      var list = document.querySelector('.rs-list');
+      if (list) list.scrollTop = keep.list;
+      window.scrollTo(0, keep.page);
+      keep = null;
+    }
     document.querySelectorAll('[data-solo-unit]').forEach(function (d) { d.addEventListener('toggle', function () { ui.open[d.dataset.soloUnit] = d.open; }); });
     if (bound) return;
     bound = true;
