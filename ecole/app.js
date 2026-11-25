@@ -292,7 +292,21 @@
       h += '<button class="subj-card" style="' + vars(s) + '--p:' + (s.noSyllabus ? 0 : r.pct) + '" data-a="subject" data-id="' + s.id + '">' +
         '<div class="ring"><span>' + ART.symbol(s.id, s.color, 22) + '</span></div><div class="sc-main"><div class="sc-name">' + esc(s.short) + '</div><div class="sc-sub">' + sub + '</div></div>' + statusPill(s, r) + '</button>';
     });
-    return h + '</div></div>' + revBlock();
+    return h + '</div></div>' + soloBlock() + revBlock();
+  }
+
+  // Mon planning de révision (solo) : le résumé du jour, sous la carte, avant les Révisions à deux.
+  function soloCtx() {
+    return { C: C, E: E, S: S, ART: ART, state: state, settings: settings, today: today, esc: esc, money: money, vars: vars, CHECK: CHECK,
+      toast: toast, petals: petals, sheet: sheet, closeSheet: closeSheet, rerender: rerender, render: render };
+  }
+  function soloBlock() {
+    if (!window.SoloView) return '';
+    var x = SoloView.summary(soloCtx());
+    return '<div class="section-h"><h3>Mon planning de révision</h3><span class="aside">rien que pour moi</span></div>' +
+      '<a class="card rev-link" href="#" data-a="go" data-view="revsolo">' + ART.icon('calendar', null, 30) + '<span><b>' +
+      (x.today ? 'Aujourd’hui : ' + x.todayDone + '/' + x.today + ' tâche' + (x.today > 1 ? 's' : '') + ' de révision' : 'Rien de prévu aujourd’hui') + '</b>' +
+      '<small>' + x.done + '/' + x.total + ' tâches faites en Microeconomics, Business, International Relations et Maths · organise tes jours jusqu’aux examens</small></span><span class="btn small">Ouvrir</span></a>';
   }
 
   // Révisions à deux : le planning partagé, sous la carte. Lit le résumé gardé par revisions/ (rev_cache).
@@ -428,7 +442,7 @@
     h += '<div class="card bank">' + ART.piggyBank(160) + '<div><div class="amount">' + money(w.total) + '</div><div class="lvl">Niveau ' + (w.level + 1) + ' · ' + esc(w.levelName) + '</div>' +
       (w.next ? '<div class="coins-bar"><i style="width:' + w.toNext + '%"></i></div><div style="font-size:12.5px;color:var(--ink-2);">Encore <b>' + money(w.next.at - w.total) + '</b> pour devenir « ' + esc(w.next.name) + ' »</div>' : '<div style="margin-top:8px;">Tu as tout débloqué ✿</div>') +
       '<div class="earn" style="margin-top:12px;"><div><span>Étapes de cours (5 $ jusqu’à 20 min, 7 $ jusqu’à 40 min, 10 $ au-delà)</span><b>' + money(w.work) + '</b></div>' +
-      '<div><span>Routines du jardin</span><b>' + money(w.routines) + '</b></div><div><span>Tes ajouts</span><b>' + money(w.extras) + '</b></div>' +
+      '<div><span>Routines du jardin</span><b>' + money(w.routines) + '</b></div><div><span>Mon planning de révision</span><b>' + money(w.revision) + '</b></div><div><span>Tes ajouts</span><b>' + money(w.extras) + '</b></div>' +
       '<div><span>Bonus semaine complète (' + money(w.weekBonus) + ' chacune)</span><b>' + money(w.bonus) + '</b></div></div></div></div>';
     var taken = ((state.rewards || {}).taken) || {};
     var toTake = w.levels.map(function (l, i) { return i; }).filter(function (i) { return i > 0 && i <= w.level && !taken[i]; });
@@ -816,9 +830,10 @@
   // ---------------------------------------------------------------- Rendu + événements
   function render() {
     var v = document.getElementById('view');
-    var html = ui.view === 'today' ? viewToday() : ui.view === 'week' ? viewWeek() : ui.view === 'subjects' ? viewSubjects() : ui.view === 'progress' ? viewProgress() : viewSettings();
+    var html = ui.view === 'today' ? viewToday() : ui.view === 'week' ? viewWeek() : ui.view === 'subjects' ? viewSubjects() : ui.view === 'progress' ? viewProgress() : ui.view === 'revsolo' && window.SoloView ? SoloView.render(soloCtx()) : viewSettings();
     v.innerHTML = '<div class="view">' + html + '</div>';
-    document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('on', t.dataset.view === ui.view); });
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('on', t.dataset.view === ui.view || (ui.view === 'revsolo' && t.dataset.view === 'subjects')); });
+    if (ui.view === 'revsolo' && window.SoloView) SoloView.mount(soloCtx());
     drawTrails();
   }
   function rerender() { load(); render(); checkRewards(); }
@@ -830,6 +845,7 @@
     if (t.classList.contains('tab')) { go(t.dataset.view); return; }
     var a = t.dataset.a, id = t.dataset.id;
     if (t.tagName === 'A') e.preventDefault();
+    if (a && a.indexOf('solo-') === 0 && window.SoloView) { SoloView.click(a, t, soloCtx()); return; }
     switch (a) {
       case 'go': go(t.dataset.view); break;
       case 'toggle': {

@@ -641,11 +641,14 @@
       Object.keys(state.routineLog[d]).forEach(function (rid) { if (rmins[rid] != null) routines += rewardMins(rmins[rid]); });
     });
     (state.extras || []).forEach(function (x) { if (x.done) extras += rewardMins(x.mins); });
-    var total = work + routines + extras + bonus, lvl = 0;
+    // Mon planning de révision : chaque tâche cochée garde ce qu'elle a rapporté (state.solo.done).
+    var revision = 0, sd = (state.solo || {}).done || {};
+    Object.keys(sd).forEach(function (k) { revision += (sd[k] && sd[k].pay) || 0; });
+    var total = work + routines + extras + bonus + revision, lvl = 0;
     for (var i = 0; i < LEVELS.length; i++) if (total >= LEVELS[i][0]) lvl = i;
     var next = LEVELS[lvl + 1] || null;
     return {
-      total: total, work: work, routines: routines, extras: extras, bonus: bonus, weekBonus: WEEK_BONUS,
+      total: total, work: work, routines: routines, extras: extras, bonus: bonus, revision: revision, weekBonus: WEEK_BONUS,
       level: lvl, levelName: LEVELS[lvl][1], next: next ? { at: next[0], name: next[1] } : null,
       toNext: next ? Math.round(100 * (total - LEVELS[lvl][0]) / (next[0] - LEVELS[lvl][0])) : 100, levels: LEVELS
     };
